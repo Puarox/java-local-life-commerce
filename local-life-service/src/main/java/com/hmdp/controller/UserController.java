@@ -7,12 +7,15 @@ import com.hmdp.dto.Result;
 import com.hmdp.entity.UserInfo;
 import com.hmdp.service.IUserInfoService;
 import com.hmdp.service.IUserService;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.time.LocalDate;
 
 @RestController
 @RequestMapping("/user")
@@ -48,7 +51,7 @@ public class UserController {
     public Result info(@PathVariable("id") Long userId) {
         UserInfo info = userInfoService.getById(userId);
         if (info == null) {
-            return Result.ok();
+            info = new UserInfo().setUserId(userId);
         }
         info.setCreateTime(null);
         info.setUpdateTime(null);
@@ -66,16 +69,36 @@ public class UserController {
         return signService.signCount();
     }
 
+    @Getter
     private static class LocalUserProfileDTO {
-        private final UserProfileDTO account;
-        private final UserInfo localLife;
+        private final Long id;
+        private final String username;
+        private final String nickName;
+        private final String icon;
+        private final Long userId;
+        private final String city;
+        private final String introduce;
+        private final Integer fans;
+        private final Integer followee;
+        private final Boolean gender;
+        private final LocalDate birthday;
+        private final Integer credits;
+        private final Boolean level;
 
         private LocalUserProfileDTO(UserProfileDTO account, UserInfo localLife) {
-            this.account = account;
-            this.localLife = localLife;
+            this.id = account == null ? localLife.getUserId() : account.getId();
+            this.username = account == null ? null : account.getUsername();
+            this.nickName = account == null ? null : account.getNickName();
+            this.icon = account == null ? null : account.getIcon();
+            this.userId = localLife.getUserId();
+            this.city = localLife.getCity();
+            this.introduce = localLife.getIntroduce();
+            this.fans = localLife.getFans();
+            this.followee = localLife.getFollowee();
+            this.gender = localLife.getGender();
+            this.birthday = localLife.getBirthday();
+            this.credits = localLife.getCredits();
+            this.level = localLife.getLevel();
         }
-
-        public UserProfileDTO getAccount() { return account; }
-        public UserInfo getLocalLife() { return localLife; }
     }
 }

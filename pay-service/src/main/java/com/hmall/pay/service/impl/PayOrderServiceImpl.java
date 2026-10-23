@@ -5,7 +5,9 @@ import com.baomidou.mybatisplus.core.toolkit.StringUtils;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.hmall.api.client.TradeClient;
 import com.hmall.api.client.UserClient;
+import com.hmall.api.dto.OrderSummaryDTO;
 import com.hmall.common.exception.BizIllegalException;
+import com.hmall.common.exception.ForbiddenException;
 import com.hmall.common.utils.BeanUtils;
 import com.hmall.common.utils.UserContext;
 import com.hmall.pay.domain.dto.PayApplyDTO;
@@ -42,6 +44,14 @@ public class PayOrderServiceImpl extends ServiceImpl<PayOrderMapper, PayOrder> i
     private final RabbitTemplate rabbitTemplate;
     @Override
     public String applyPayOrder(PayApplyDTO applyDTO) {
+        OrderSummaryDTO order = tradeClient.getOrder(applyDTO.getBizOrderNo());
+        if (order == null || !UserContext.getUser().equals(order.getUserId())) {
+            throw new ForbiddenException("订单不存在或无权支付");
+        }
+        if (order.getStatus() == null || order.getStatus() != 1
+                || order.getTotalFee() == null || !order.getTotalFee().equals(applyDTO.getAmount())) {
+            throw new BizIllegalException("订单状态或金额不匹配");
+        }
         // 1.幂等性校验
         PayOrder payOrder = checkIdempotent(applyDTO);
         // 2.返回结果
@@ -53,6 +63,9 @@ public class PayOrderServiceImpl extends ServiceImpl<PayOrderMapper, PayOrder> i
     public void tryPayOrderByBalance(PayOrderFormDTO payOrderFormDTO) {
         // 1.查询支付单
         PayOrder po = getById(payOrderFormDTO.getId());
+        if (po == null || !UserContext.getUser().equals(po.getBizUserId())) {
+            throw new ForbiddenException("支付单不存在或无权支付");
+        }
         // 2.判断状态
         if(!PayStatus.WAIT_BUYER_PAY.equalsValue(po.getStatus())){
             // 订单不是未支付，状态异常

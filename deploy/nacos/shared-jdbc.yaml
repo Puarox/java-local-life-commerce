@@ -1,0 +1,9 @@
+spring:
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://${DB_HOST:127.0.0.1}:${DB_PORT:3307}/${hm.db.database}?useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=utf8
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:}
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true

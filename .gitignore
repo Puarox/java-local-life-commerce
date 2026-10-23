@@ -10,5 +10,6 @@ reports/raw/
 reports/screenshots/
 
 dev-secrets/
+.runtime/
 *.jks
 

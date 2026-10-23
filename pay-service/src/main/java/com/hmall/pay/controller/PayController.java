@@ -2,6 +2,8 @@ package com.hmall.pay.controller;
 
 import com.hmall.common.exception.BizIllegalException;
 import com.hmall.common.utils.BeanUtils;
+import com.hmall.common.utils.UserContext;
+import com.hmall.pay.domain.po.PayOrder;
 import com.hmall.pay.domain.dto.PayApplyDTO;
 import com.hmall.pay.domain.dto.PayOrderFormDTO;
 import com.hmall.pay.domain.vo.PayOrderVO;
@@ -27,7 +29,8 @@ public class PayController {
     @GetMapping
     public List<PayOrderVO> queryPayOrders()
     {
-        return BeanUtils.copyList(payOrderService.list(), PayOrderVO.class);
+        return BeanUtils.copyList(payOrderService.lambdaQuery()
+                .eq(PayOrder::getBizUserId, UserContext.getUser()).list(), PayOrderVO.class);
     }
     @ApiOperation("生成支付单")
     @PostMapping

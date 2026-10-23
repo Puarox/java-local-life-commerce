@@ -23,6 +23,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.util.Assert;
 
 import java.util.concurrent.TimeUnit;
+import java.time.LocalDateTime;
 
 /**
  * <p>
@@ -57,6 +58,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
             }
             user = lambdaQuery().eq(User::getPhone, loginDTO.getPhone()).one();
             if (user == null) {
+                LocalDateTime now = LocalDateTime.now();
                 user = new User()
                         .setUsername(loginDTO.getPhone())
                         .setPhone(loginDTO.getPhone())
@@ -64,7 +66,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
                         .setIcon("")
                         .setPassword(passwordEncoder.encode(RandomUtil.randomString(32)))
                         .setBalance(0)
-                        .setStatus(UserStatus.NORMAL);
+                        .setStatus(UserStatus.NORMAL)
+                        .setCreateTime(now)
+                        .setUpdateTime(now);
                 save(user);
             }
             redisTemplate.delete(key);

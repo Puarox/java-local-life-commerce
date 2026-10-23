@@ -8,6 +8,7 @@ import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.core.Ordered;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.stereotype.Component;
@@ -28,38 +29,40 @@ public class AuthGlobalFilter implements GlobalFilter, Ordered {
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
         //1 get the request
-        ServerHttpRequest request = exchange.getRequest();
-        // 2 judge if the request need to be filtered
-        if(isExclude(request.getPath().toString())){
-
-            return chain.filter(exchange);
-        }
-        //3 get the token
+        ServerHttpRequest request = exchange.getRequest().mutate()
+                .headers(headers -> headers.remove("user-info"))
+                .build();
+        exchange = exchange.mutate().request(request).build();
+        // Public reads can still carry an optional JWT so likes and profile state stay accurate.
+        boolean publicRoute = isExclude(request.getMethod(), request.getPath().toString());
         String token = null ;
         List<String> headers =  request.getHeaders().get("authorization");
         if(headers != null && !headers.isEmpty() ){
             token = headers.get(0);
         }
-        // 4 judge
+        if (publicRoute && token == null) return chain.filter(exchange);
         Long userId = null;
         try {
              userId = jwtTool.parseToken(token);
         }catch (UnauthorizedException e){
+            if (publicRoute) return chain.filter(exchange);
             ServerHttpResponse response = exchange.getResponse();
             response.setStatusCode(HttpStatus.UNAUTHORIZED);
             return response.setComplete();
         }
-        //5 keep the message and pass to the service
+        // 5 keep the authenticated user and pass it to the service
         String userInfo =userId.toString();
         ServerWebExchange ex = exchange.mutate()
-                        .request(b ->b.header("user-info",userInfo))
-                                .build();
-
-        System.out.println("userId = "+ userId);
+                .request(b -> b.headers(h -> h.set("user-info", userInfo)))
+                .build();
         return chain.filter(ex);
     }
 
-    private boolean isExclude(String path) {
+    private boolean isExclude(HttpMethod method, String path) {
+        if (HttpMethod.POST.equals(method)) {
+            return "/users/login".equals(path) || "/users/code".equals(path);
+        }
+        if (!HttpMethod.GET.equals(method)) return false;
         for (String pathPattern : authProperties.getExcludePaths()) {
             if(antPathMatcher.match(pathPattern, path)){
                 return true;

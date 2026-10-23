@@ -11,6 +11,7 @@ import com.hmall.cart.domain.vo.CartVO;
 import com.hmall.cart.mapper.CartMapper;
 import com.hmall.cart.service.ICartService;
 import com.hmall.common.exception.BizIllegalException;
+import com.hmall.common.exception.BadRequestException;
 import com.hmall.common.utils.BeanUtils;
 import com.hmall.common.utils.CollUtils;
 import com.hmall.common.utils.UserContext;
@@ -19,6 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -40,8 +42,20 @@ public class CartServiceImpl extends ServiceImpl<CartMapper, Cart> implements IC
     private final ItemClient itemClient;
     @Override
     public void addItem2Cart(CartFormDTO cartFormDTO) {
+        if (cartFormDTO == null || cartFormDTO.getItemId() == null) {
+            throw new BadRequestException("商品 ID 不能为空");
+        }
         // 1.获取登录用户
         Long userId = UserContext.getUser();
+
+        // Price and description come from the item service, never from client input.
+        List<ItemDTO> products = itemClient.queryItemByIds(Collections.singletonList(cartFormDTO.getItemId()));
+        if (CollUtils.isEmpty(products) || products.get(0).getStatus() == null
+                || products.get(0).getStatus() != 1 || products.get(0).getStock() == null
+                || products.get(0).getStock() <= 0) {
+            throw new BadRequestException("商品不存在、已下架或无库存");
+        }
+        ItemDTO product = products.get(0);
 
         // 2.判断是否已经存在
         if(checkItemExists(cartFormDTO.getItemId(), userId)){
@@ -54,7 +68,12 @@ public class CartServiceImpl extends ServiceImpl<CartMapper, Cart> implements IC
 
         // 3.新增购物车条目
         // 3.1.转换PO
-        Cart cart = BeanUtils.copyBean(cartFormDTO, Cart.class);
+        Cart cart = new Cart();
+        cart.setItemId(product.getId());
+        cart.setName(product.getName());
+        cart.setSpec(product.getSpec());
+        cart.setPrice(product.getPrice());
+        cart.setImage(product.getImage());
         // 3.2.保存当前用户
         cart.setUserId(userId);
         // 3.3.保存到数据库

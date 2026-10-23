@@ -20,4 +20,6 @@ hm:
       - /blog/hot
       - /blog/*
       - /blog/likes/**
+      - /blog/of/user
+      - /blog-comments/*
       - /user/info/**
