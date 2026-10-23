@@ -85,48 +85,26 @@
     <div class="blog-divider"></div>
     <div class="blog-comments">
       <div class="comments-head">
-        <div>网友评价 <span>（119）</span></div>
+        <div>网友评价 <span>（{{blog.comments || 0}}）</span></div>
         <div><i class="el-icon-arrow-right"></i></div>
       </div>
       <div class="comment-list">
-        <div class="comment-box" v-for="i in 3" :key="i">
+        <div class="comment-box" v-for="comment in comments" :key="comment.id">
           <div class="comment-icon">
-            <img
-                src="https://p0.meituan.net/userheadpicbackend/57e44d6eba01aad0d8d711788f30a126549507.jpg%4048w_48h_1e_1c_1l%7Cwatermark%3D0"
-                alt="">
+            <img :src="comment.icon || '/imgs/icons/default-icon.png'" alt="">
           </div>
           <div class="comment-info">
-            <div class="comment-user">叶小乙 <span>Lv5</span></div>
-            <div style="display: flex;">
-              打分
-              <el-rate disabled v-model="4.5"></el-rate>
-            </div>
+            <div class="comment-user">{{comment.nickName}}</div>
             <div style="padding: 5px 0; font-size: 14px">
-              某平台上买的券，价格可以当工作餐吃，虽然价格便宜，但是这家店一点都没有...
+              {{comment.content}}
             </div>
-            <div class="comment-images">
-              <img
-                  src="https://qcloud.dpfile.com/pc/6T7MfXzx7USPIkSy7jzm40qZSmlHUF2jd-FZUL6WpjE9byagjLlrseWxnl1LcbuSGybIjx5eX6WNgCPvcASYAw.jpg"
-                  alt="">
-              <img
-                  src="https://qcloud.dpfile.com/pc/sZ5q-zgglv4VXEWU71xCFjnLM_jUHq-ylq0GKivtrz3JksWQ1f7oBWZsxm1DWgcaGybIjx5eX6WNgCPvcASYAw.jpg"
-                  alt="">
-              <img
-                  src="https://qcloud.dpfile.com/pc/xZy6W4NwuRFchlOi43DVLPFsx7KWWvPqifE1JTe_jreqdsBYA9CFkeSm2ZlF0OVmGybIjx5eX6WNgCPvcASYAw.jpg"
-                  alt="">
-              <img
-                  src="https://qcloud.dpfile.com/pc/xZy6W4NwuRFchlOi43DVLPFsx7KWWvPqifE1JTe_jreqdsBYA9CFkeSm2ZlF0OVmGybIjx5eX6WNgCPvcASYAw.jpg"
-                  alt="">
-            </div>
-            <div>
-              浏览641 &nbsp;&nbsp;&nbsp;&nbsp;评论5
-            </div>
+            <div style="color:#8c939d;font-size:12px">{{comment.createTime}}</div>
           </div>
         </div>
-        <div
-            style="display: flex; justify-content: space-between;padding: 15px 0; border-top: 1px solid #f1f1f1; margin-top: 10px;">
-          <div>查看全部119条评价</div>
-          <div><i class="el-icon-arrow-right"></i></div>
+        <div v-if="comments.length === 0" style="padding:18px 0;color:#8c939d">还没有评论，来说说你的感受。</div>
+        <div style="display:flex;gap:8px;padding:16px 0">
+          <el-input v-model="commentText" maxlength="255" placeholder="写一条评论"></el-input>
+          <el-button type="primary" @click="submitComment">发布</el-button>
         </div>
       </div>
     </div>
@@ -166,6 +144,8 @@
       blog: {},
       shop: {},
       likes: [],
+      comments: [],
+      commentText: '',
       user: {}, // 登录用户
       followed: false, // 是否关注了
       _width: 0,
@@ -216,6 +196,7 @@
             this.$nextTick(this.init);
             this.queryShopById(data.shopId)
             this.queryLikeList(id);
+            this.queryComments(id);
             this.queryLoginUser();
           })
           .catch(this.$message.error)
@@ -231,6 +212,18 @@
       queryLikeList(id){
         axios.get("/blog/likes/" + id)
           .then(({data}) => this.likes = data)
+          .catch(this.$message.error)
+      },
+      queryComments(id){
+        axios.get('/blog-comments/' + id)
+          .then(({data}) => this.comments = data || [])
+          .catch(this.$message.error)
+      },
+      submitComment(){
+        const content = this.commentText.trim();
+        if (!content) return this.$message.error('请先输入评论');
+        axios.post('/blog-comments', {blogId: this.blog.id, content})
+          .then(() => { this.commentText = ''; this.blog.comments = (this.blog.comments || 0) + 1; this.queryComments(this.blog.id); this.$message.success('评论已发布') })
           .catch(this.$message.error)
       },
       addLike(){

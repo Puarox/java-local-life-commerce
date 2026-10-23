@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>附近好物 · 黑马点评</title>
+  <link rel="stylesheet" href="/css/commerce.css">
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="/index.html"><span class="brand-mark">●</span> 黑马点评 <span class="brand-sub">/ 附近好物</span></a>
+    <nav aria-label="主导航"><a href="/index.html">逛附近</a><a class="active" href="/commerce.html" aria-current="page">买好物</a><a href="/info.html">我的</a></nav>
+  </header>
+  <main>
+    <section class="intro">
+      <div><p class="eyebrow">本地生活 · 商品交易</p><h1>逛完一家店，<br><em>也把喜欢的带回家。</em></h1><p class="intro-copy">在这里挑选商品，放入购物车并完成余额支付。订单进度会在右侧实时显示。</p></div>
+      <div class="route-card" aria-label="购物流程"><span>挑商品</span><i>→</i><span>放入购物车</span><i>→</i><span>创建订单</span><i>→</i><span>余额支付</span></div>
+    </section>
+    <section class="workspace">
+      <div class="catalog">
+        <div class="section-head"><div><p class="eyebrow">GOODS / 01</p><h2>商品清单</h2></div><p id="catalog-count" class="muted">正在加载…</p></div>
+        <form id="search-form" class="search"><label class="sr-only" for="search-input">搜索商品</label><input id="search-input" type="search" placeholder="搜索商品名称，如牛奶、咖啡" autocomplete="off"><button type="submit">查找商品 <span aria-hidden="true">↗</span></button></form>
+        <div id="goods" class="goods-grid" aria-live="polite"></div>
+        <div class="pager"><button id="prev-page" type="button">上一页</button><span id="page-label">第 1 页</span><button id="next-page" type="button">下一页</button></div>
+      </div>
+      <aside class="receipt" aria-label="购物车和订单">
+        <div class="receipt-top"><p class="eyebrow">YOUR BAG / 02</p><h2>我的购物车</h2><p id="account-state" class="muted"></p></div>
+        <div id="cart" class="cart-list" aria-live="polite"><p class="empty">登录后可查看购物车。</p></div>
+        <div class="receipt-bottom"><div class="total"><span>本次合计</span><strong id="total">¥0.00</strong></div><button id="checkout" class="checkout" type="button" disabled>创建订单</button><p class="fineprint">商品价格以结算时服务端数据为准。</p></div>
+        <div id="payment" class="payment" hidden><p class="eyebrow">PAYMENT / 03</p><h3>订单已创建</h3><p id="order-number" class="order-number"></p><label for="pay-password">账户密码</label><input id="pay-password" type="password" autocomplete="current-password" placeholder="输入账户密码完成余额支付"><button id="pay-button" type="button">确认余额支付</button></div>
+      </aside>
+    </section>
+  </main>
+  <div id="notice" class="notice" role="status" aria-live="polite"></div>
+  <script src="/js/commerce.js"></script>
+</body>
+</html>

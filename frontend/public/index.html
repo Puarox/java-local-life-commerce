@@ -27,6 +27,7 @@
     </div>
     <div class="header-icon" @click="toPage(4)"><i class="el-icon-user"></i></div>
   </div>
+  <a href="/commerce.html" style="display:block;margin:10px 14px;padding:12px 16px;border-radius:12px;background:#fff1e9;color:#d94f20;font-weight:700;text-decoration:none;">附近好物 · 逛商品、购物车和订单 →</a>
   <div class="type-list">
     <div class="type-box" v-for="t in types" :key="t.id" @click="toShopList(t.id, t.name)">
       <div class="type-view"><img :src="'/imgs/' + t.icon" alt=""></div>
