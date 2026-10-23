@@ -1,0 +1,14 @@
+target/
+**/target/
+.idea/
+*.iml
+.vscode/
+.env
+logs/
+*.log
+reports/raw/
+reports/screenshots/
+
+dev-secrets/
+*.jks
+

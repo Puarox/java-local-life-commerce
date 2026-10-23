@@ -1,0 +1,16 @@
+server:
+  port: 8080
+spring:
+  application:
+    name: gateway
+hm:
+  jwt:
+    location: "${JWT_KEYSTORE_LOCATION:file:./dev-secrets/hmall.jks}"
+    alias: hmall # 秘钥别名
+    password: "${JWT_KEYSTORE_PASSWORD:}"
+    tokenTTL: 30m # 登录有效期
+  auth:
+    excludePaths: # 无需登录校验的路径
+      - /search/**
+      - /users/login
+      - /items/**
