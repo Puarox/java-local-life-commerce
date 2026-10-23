@@ -17,10 +17,10 @@ Captured on 2026-10-23 (Asia/Shanghai). Source repositories remain untouched by 
 - Repository: `F:\Java\Project\comment\backend\hm-dianping`
 - HEAD: `911d6fc80f5fdbafd16c4bb9a56b8975a7414b16` (`master`, aligned with `origin/master` at capture)
 - Working tree: modified `pom.xml`, shop type/user/voucher services and voucher-order service; staged and modified Redisson/lock files.
-- Imported: 71 main Java files, one test class, application configuration, and the SQL schema/data script.
+- Imported: 71 main Java files, application configuration, and the SQL schema/data script. The original Spring context test was replaced by a dependency-free shared-context unit test because it launched an unbounded Redis ID-generation workload during every Maven test run.
 - Stack baseline: Spring Boot 2.3.12, Java 8, MyBatis Plus 3.4.3, MySQL Connector 5.1.47, Redis, Redisson 3.13.0.
 - Main concepts: merchant cache, cache rebuild/penetration controls, blogs/comments, follows/Feed, voucher ordering, Redis ID generation.
-- The current working version contains incomplete voucher-order behavior (including a hardcoded user identifier and duplicated stock path); it is preserved as migration input and must be corrected before claiming the flow works.
+- The captured source revision contains incomplete voucher-order behavior (including a hardcoded user identifier and duplicated stock path). The integrated implementation derives identity from the shared user context and has one transactional stock decrement; database-backed concurrency behavior still requires runtime integration testing.
 
 ## Migration rules
 

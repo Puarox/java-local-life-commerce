@@ -18,7 +18,6 @@ public class UserContext {
     public static Long getUser() {
         return tl.get();
     }
-
     /**
      * 移除当前登录用户信息
      */
