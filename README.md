@@ -33,7 +33,12 @@
 .\mvnw.cmd -DskipTests compile
 .\mvnw.cmd test
 .\mvnw.cmd package
+python scripts/check_api_surface.py
+python -m pip install -r scripts/requirements-test.txt
+python scripts/test_frontend_smoke.py
 ```
+
+前端冒烟脚本需要本机已安装的 Edge/Chromium；若 Edge 不在默认安装位置，可设置 `EDGE_EXECUTABLE`。启动前端方式见下方“本地前端”。
 
 依赖服务未启动时，单元测试仍可运行；接口联调需要 Nacos、MySQL、Redis 和 RabbitMQ，并配置对应服务的数据库及共享 Nacos 配置。每个服务使用独立 schema，原始配置会连接 Nacos，不提供可直接用于生产的默认凭据。
 
@@ -62,5 +67,11 @@ $env:JWT_KEYSTORE_PASSWORD = "YOUR_LOCAL_PASSWORD"
 - [`docs/provenance/source-inventory.md`](docs/provenance/source-inventory.md)：来源仓库、迁移边界和可复核资产清单。
 - [`docs/architecture.md`](docs/architecture.md)：统一身份和业务模块边界。
 - [`docs/evaluation.md`](docs/evaluation.md)：当前验证范围、运行依赖与后续压测记录表。
+- [`docs/verification/api-test-matrix.md`](docs/verification/api-test-matrix.md)：逐接口验证矩阵及实际执行记录。
+- [`docs/verification/manual-qa.md`](docs/verification/manual-qa.md)：前端启动、人工操作流程和本机环境记录。
+
+## 本地前端
+
+点评静态页面在 [`frontend/public`](frontend/public)，从项目根目录运行 `node frontend/server.js` 后打开 <http://127.0.0.1:8090/>。静态服务器会把 `/api/*` 转发给 Gateway 的 8080 端口；Gateway 与依赖服务仍需先运行。
 
 压测数字只在完成可复现压测后填写，源码行数、模块数和编译结果不会写成吞吐指标。
