@@ -1,125 +1,101 @@
 package com.hmdp.service.impl;
 
+import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.hmall.common.utils.UserContext;
 import com.hmdp.dto.Result;
-import java.util.concurrent.TimeUnit;
 import com.hmdp.entity.SeckillVoucher;
 import com.hmdp.entity.VoucherOrder;
 import com.hmdp.mapper.VoucherOrderMapper;
 import com.hmdp.service.ISeckillVoucherService;
 import com.hmdp.service.IVoucherOrderService;
-import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.hmdp.utils.RedisIdWorker;
-import com.hmdp.utils.SimpleRedisLock;
-import com.hmdp.utils.UserHolder;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.aop.framework.AopContext;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import javax.annotation.Resource;
 import java.time.LocalDateTime;
 
-
-/**
- * <p>
- *  服务实现类
- * </p>
- *
- * @author 虎哥
- * @since 2021-12-22
- */
 @Service
-public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, VoucherOrder> implements IVoucherOrderService {
+public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, VoucherOrder>
+        implements IVoucherOrderService {
+
     @Resource
     private ISeckillVoucherService seckillVoucherService;
     @Resource
     private RedissonClient redissonClient;
     @Resource
-    private RedisIdWorker  redisIdWorker;
-    @Autowired
-    private VoucherServiceImpl voucherServiceImpl;
-
-    @Resource
-    private StringRedisTemplate stringRedisTemplate ;
+    private RedisIdWorker redisIdWorker;
 
     @Override
-    public Result sckillVoucher(Long voucherId){
-        SeckillVoucher voucher = seckillVoucherService.getById(voucherId);
-
-        LocalDateTime time = LocalDateTime.now();
-        if(!voucher.getBeginTime().isBefore(time) && !voucher.getEndTime().isAfter(time)){
-            return Result.fail("sorry but not the time  voucher...");
+    public Result sckillVoucher(Long voucherId) {
+        Long userId = UserContext.getUser();
+        if (userId == null) {
+            return Result.fail("请先登录");
         }
 
-        if(voucher.getStock() < 1){
-
-            return Result.fail("sorry but not the stock voucher...");
-        }
-        // 5.一人一单逻辑
-        // 5.1.用户id
-        Long userId = UserHolder.getUser().getId();
-        int count = query().eq("user_id", userId).eq("voucher_id", voucherId).count();
-        // 5.2.判断是否存在
-        if (count > 0) {
-            // 用户已经购买过了
-            return Result.fail("用户已经购买过一次！");
-        }
-        boolean success = seckillVoucherService.update()
-                .setSql("stock= stock -1")
-                .eq("voucher_id", voucherId).update();
-        if (!success) {
-            //扣减库存
-            return Result.fail("库存不足！");
-        }
-
-        RLock lock = redissonClient.getLock("order:"+userId);
-
-
-        boolean isLock  = lock.tryLock();
-        if(!isLock){
-            return Result.fail("sorry but not the lock voucher...");
-        }
-        try{
+        RLock lock = redissonClient.getLock("voucher:order:" + userId);
+        boolean acquired = false;
+        try {
+            // Use Redisson's watchdog lease so a slow transaction cannot outlive a fixed lease.
+            acquired = lock.tryLock();
+            if (!acquired) {
+                return Result.fail("正在处理该用户的领券请求");
+            }
             IVoucherOrderService proxy = (IVoucherOrderService) AopContext.currentProxy();
-            return proxy.createVoucherOrder(voucherId);
-        }finally {
-            lock.unlock();
+            return proxy.createVoucherOrder(voucherId, userId);
+        } catch (DuplicateKeyException e) {
+            // The database uniqueness constraint closes races across service instances.
+            return Result.fail("每位用户限领一张");
+        } finally {
+            if (acquired && lock.isHeldByCurrentThread()) {
+                lock.unlock();
+            }
         }
     }
+
     @Override
-    @Transactional
-    public Result createVoucherOrder( Long voucherId){
+    @Transactional(rollbackFor = Exception.class)
+    public Result createVoucherOrder(Long voucherId, Long userId) {
+        LocalDateTime now = LocalDateTime.now();
+        SeckillVoucher voucher = seckillVoucherService.getById(voucherId);
+        if (voucher == null) {
+            return Result.fail("优惠券不存在");
+        }
+        if (now.isBefore(voucher.getBeginTime()) || now.isAfter(voucher.getEndTime())) {
+            return Result.fail("当前不在优惠券活动时间内");
+        }
 
-    Long userId = 32452343L;
+        long existingOrderCount = lambdaQuery()
+                .eq(VoucherOrder::getUserId, userId)
+                .eq(VoucherOrder::getVoucherId, voucherId)
+                .count();
+        if (existingOrderCount > 0) {
+            return Result.fail("每位用户限领一张");
+        }
 
-    int count = query().eq("user_id", userId).eq("voucher_id", voucherId).count();
-    if(count > 0){
-        return Result.fail("sorry but fail...");
+        boolean stockReserved = seckillVoucherService.update()
+                .setSql("stock = stock - 1")
+                .eq("voucher_id", voucherId)
+                .gt("stock", 0)
+                .update();
+        if (!stockReserved) {
+            return Result.fail("优惠券库存不足");
+        }
+
+        VoucherOrder order = new VoucherOrder();
+        order.setId(redisIdWorker.nextId("voucher-order"));
+        order.setUserId(userId);
+        order.setVoucherId(voucherId);
+        order.setPayType(1);
+        order.setStatus(1);
+        order.setCreateTime(now);
+        if (!save(order)) {
+            throw new IllegalStateException("保存优惠券订单失败");
+        }
+        return Result.ok(order.getId());
     }
-
-    boolean sucess = seckillVoucherService.update()
-            .setSql("stock = stock -1")
-            .eq("voucher_id", voucherId)
-            .gt("stock", 0)
-            .update();
-
-    if (!sucess){
-        return Result.fail("sorry but fail...");
-    }
-    VoucherOrder voucherOrder = new VoucherOrder();
-    long orderId = redisIdWorker.nextId("order");
-    voucherOrder.setId(orderId);
-    //TODO:完成用户登录中的用户获取等等
-
-    voucherOrder.setUserId(userId);
-
-    voucherOrder.setVoucherId(voucherId);
-
-    save(voucherOrder);
-return Result.ok(orderId);
-}
-
 }
