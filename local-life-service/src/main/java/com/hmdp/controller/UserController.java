@@ -32,6 +32,18 @@ public class UserController {
         return Result.ok(userClient.getProfile(userId));
     }
 
+    @GetMapping("/{id}")
+    public Result profile(@PathVariable("id") Long userId) {
+        UserProfileDTO profile = userClient.getProfile(userId);
+        return profile == null ? Result.fail("用户不存在") : Result.ok(profile);
+    }
+
+    @PostMapping("/logout")
+    public Result logout() {
+        // JWT is stateless; the client clears its token after this acknowledgement.
+        return Result.ok();
+    }
+
     @GetMapping("/info/{id}")
     public Result info(@PathVariable("id") Long userId) {
         UserInfo info = userInfoService.getById(userId);
