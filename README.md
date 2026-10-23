@@ -60,7 +60,9 @@ $env:JWT_KEYSTORE_LOCATION = "file:./dev-secrets/hmall.jks"
 $env:JWT_KEYSTORE_PASSWORD = "YOUR_LOCAL_PASSWORD"
 ```
 
-当前本地生活 API 默认端口为 `8081`，Gateway 为 `8080`。其它服务端口与数据库名见各自 `src/main/resources/application*.yaml` 和 Nacos 配置。
+本地生活 API 单独启动时默认端口为 `8081`；统一启动脚本会覆盖为 `8088`，以避开商品服务的 `8081`。Gateway 为 `8080`，静态前端为 `8090`。其余服务和依赖端口见 [`docs/verification/manual-qa.md`](docs/verification/manual-qa.md)。
+
+本机隔离环境完成配置后，可执行 `scripts/start-services.ps1` 启动七个 Spring 服务，`scripts/stop-services.ps1` 停止由脚本启动的 Java 服务。启动前要启动 MySQL、Redis、Nacos、RabbitMQ，并发布 `deploy/nacos` 中的共享配置；本仓库不把这些第三方运行时二进制或数据库文件提交到 Git。接口联调脚本 `python scripts/test_http_integration.py` 会写入隔离测试数据库，只允许访问本机 Gateway；测试账号和数据准备见人工验收文档。
 
 ## 架构与评测记录
 

@@ -1,44 +1,31 @@
 # API 验证矩阵
 
-更新时间：2026-10-23。接口基于源码中的 Controller mapping 盘点。`待联调` 表示目前没有真实 HTTP 调用证据；编译成功不算接口通过。
+更新时间：2026-10-23。接口路由数量由 `python scripts/check_api_surface.py` 静态统计，联调脚本 `python scripts/test_http_integration.py` 通过统一 Gateway 对所有业务路由做真实 HTTP 调用。一次接口调用通过只表示该用例的响应和该链路副作用符合预期，不代表穷尽所有参数组合、权限边界或并发情况。
 
-## 电商服务
+## 覆盖范围
 
-| 服务 | 接口 | 当前状态 |
+| 模块 | 覆盖接口 | 结果 |
 |---|---|---|
-| 用户 | `POST /users/login`、`POST /users/code`、`GET /users/profile/{id}`、`PUT /users/money/deduct` | 待联调 |
-| 地址 | `GET /addresses`、`GET /addresses/{addressId}` | 待联调 |
-| 商品 | `GET /items/page`、`GET /items?ids=`、`GET /items/{id}`、`POST /items`、`PUT /items/status/{id}/{status}`、`PUT /items`、`DELETE /items/{id}`、`PUT /items/stock/deduct` | 待联调 |
-| 搜索 | `GET /search/list` | 待联调 |
-| 购物车 | `POST /carts`、`PUT /carts`、`DELETE /carts/{id}`、`GET /carts`、`DELETE /carts?ids=` | 待联调 |
-| 订单 | `GET /orders/{id}`、`POST /orders`、`PUT /orders/{orderId}` | 待联调 |
-| 支付 | `GET /pay-orders`、`POST /pay-orders`、`POST /pay-orders/{id}` | 待联调 |
+| 用户/地址 | 登录、验证码、用户资料、余额扣款、地址列表及详情 | 通过 |
+| 商品/搜索/购物车 | 分页、批量和单个查询、创建、状态、更新、库存扣减、搜索、加购、列表、更新、单删和批量删 | 通过；额外断言服务端价格覆盖客户端伪造价格 |
+| 订单/支付 | 创建订单、详情、创建支付单、支付列表、余额支付 | 通过；额外检查 RabbitMQ 通知将订单状态更新为已支付 |
+| 商户/分类 | 商户详情、创建、更新、按分类和名称查询、分类列表 | 通过 |
+| 笔记/关注/评论 | 创建、点赞、本人/热门/详情/点赞用户/用户笔记/关注 Feed、关注增删查、共同关注、评论增查 | 通过 |
+| 本地用户/签到 | 当前用户、用户资料、扁平资料扩展、签到、连续签到天数、登出 | 通过；资料扩展断言字段兼容前端页面 |
+| 优惠券/秒杀 | 普通券、秒杀券、商户券列表、秒杀下单 | 通过 |
+| 上传 | 上传图片、删除图片 | 通过 |
 
-## 本地生活服务
-
-| 服务 | 接口 | 当前状态 |
-|---|---|---|
-| 商户 | `GET /shop/{id}`、`POST /shop`、`PUT /shop`、`GET /shop/of/type`、`GET /shop/of/name` | 待联调 |
-| 商户分类 | `GET /shop-type/list` | 待联调 |
-| 笔记 | `POST /blog`、`PUT /blog/like/{id}`、`GET /blog/of/me`、`GET /blog/hot`、`GET /blog/{id}`、`GET /blog/likes/{id}`、`GET /blog/of/user`、`GET /blog/of/follow` | 待联调 |
-| 关注 | `PUT /follow/{id}/{isFollow}`、`GET /follow/or/not/{id}`、`GET /follow/common/{id}` | 待联调 |
-| 用户扩展 | `GET /user/me`、`GET /user/{id}`、`GET /user/info/{id}`、`POST /user/sign`、`GET /user/sign/count`、`POST /user/logout` | 待联调 |
-| 优惠券 | `POST /voucher`、`POST /voucher/seckill`、`GET /voucher/list/{shopId}` | 待联调 |
-| 秒杀订单 | `POST /voucher-order/seckill/{id}` | 待联调 |
-| 图片上传 | `POST /upload/blog`、`GET /upload/blog/delete?name=` | 待联调 |
-| 评论 | 目前 Controller 未定义路由 | 不属于当前可调用接口 |
-
-## 已实际执行
+## 最近一次全量接口联调
 
 | 日期 | 命令/方式 | 结果 | 边界 |
 |---|---|---|---|
-| 2026-10-23 | `./mvnw test` | 通过，2 tests、0 failures、0 errors | 只有 `UserContextTest` 两项单元测试 |
-| 2026-10-23 | `./mvnw verify` | 通过，完整 10 模块 Maven reactor | Maven 仍只执行上述 2 项自动化单测 |
-| 2026-10-23 | `./mvnw -DskipTests compile` | 通过 | 只证明源码可编译 |
-| 2026-10-23 | `python scripts/check_api_surface.py` | 通过，55 个 HTTP mappings | 只核对 Controller 路由声明数量；不等于接口功能调用通过 |
-| 2026-10-23 | Playwright + Microsoft Edge 打开 11 个静态页面 | 11 页面 HTTP 200、0 pageerror | 页面触发的后端请求目前因 Gateway/服务依赖未启动返回 502；不代表页面业务操作通过 |
-| 2026-10-23 | 隔离 MySQL 导入点评脚本 | 11 tables、14 shops | 仅验证数据库脚本能在 MySQL 8.0.39 非严格 sql_mode 下导入；不是业务 API 验证 |
+| 2026-10-23 | `python scripts/test_http_integration.py` | 58 次真实 HTTP 调用全部通过，覆盖 56 个 Gateway 路由映射 | 写入隔离本地 MySQL/Redis；使用 Jack 演示账号；不测试完整异常输入矩阵或压测指标 |
+| 2026-10-23 | `python scripts/check_api_surface.py` | 56 个 HTTP mappings | 静态盘点，接口数以测试脚本实际调用为准 |
+| 2026-10-23 | `python scripts/test_commerce_browser.py` | Edge 浏览器完成搜索、加购、下单、余额支付、订单状态检查 | 覆盖电商主路径，不等价于人工检查点评所有页面 |
+| 2026-10-23 | `python scripts/test_frontend_smoke.py` | 12 个静态页面 HTTP 200 且无浏览器 `pageerror` | 页面静态加载检查，不代表每个页面业务交互都已人工验收 |
 
-## 全量接口联调状态
+## 自动化测试和构建
 
-全量接口测试尚未完成。需要启动 Redis、Nacos、RabbitMQ、Gateway、6 个电商服务和本地生活服务，准备各自 schema、Nacos shared 配置、JWT 密钥及测试账号。每个接口的正常、缺参/非法参数、未登录/权限、边界/并发场景都需记录响应和副作用后才能标为通过。秒杀接口还需隔离库存和重复购买用例。
+`.\mvnw.cmd test` 当前单元测试数量较少（主要为共享用户上下文）；`.\mvnw.cmd -DskipTests package` 仅检查打包。它们不能替代上面的 HTTP 联调。每次后续验证都应记录 commit、依赖版本、命令、通过/失败数和原始日志；性能指标必须来自单独、可复现的压测。
+
+测试脚本会创建商品、商户、笔记、订单、优惠券、评论等记录，并在结尾上传/删除临时图片。仅在隔离开发库执行，禁止将 `API_BASE_URL` 指向远程或生产环境。

@@ -2,49 +2,62 @@
 
 更新时间：2026-10-23
 
-## 当前验证结论
+## 已验证环境
 
-- `./mvnw test`：通过，现有自动测试共 2 项（`UserContextTest`）。这不是全接口联调结论。
-- `./mvnw -DskipTests compile`：通过。
-- 完整接口联调尚未完成。服务依赖（Nacos、Redis、RabbitMQ、多个 MySQL schema）目前未全部配置；不要把单元测试或编译结果描述成所有接口已通过。
-- 点评静态页面已迁入 `frontend/public`。启动方式和页面/API 兼容修复在本次变更中；请按本文的流程验收。
+- Java 17 运行 Spring Boot 2.7.12 项目；源码按 Java 11 语言级别编译。
+- MySQL 8.0.39 隔离实例：`127.0.0.1:3307`，数据目录 `F:\intern2026\.local-runtime\mysql-test`。点评 schema 有 11 张表及 14 个样例商户；电商各服务使用独立 schema。
+- Redis 3.2.100：`127.0.0.1:6379`；Nacos 2.2.3 standalone：`127.0.0.1:8848`；RabbitMQ 3.13.7：`127.0.0.1:5672`。
+- Spring 服务：Gateway `8080`、商品 `8081`、用户 `8082`、购物车 `8083`、订单 `8086`、支付 `8087`、本地生活 `8088`。
+- 静态前端 `http://127.0.0.1:8090/`。服务与依赖日志写入 `.local-runtime\service-logs`（运行时目录在仓库同级的 `F:\intern2026` 下，不进 Git）。
+- `deploy/nacos` 中四份共享配置由 `python scripts/publish_nacos_config.py` 发布。JWT JKS 在 `dev-secrets`，被 `.gitignore` 排除。
 
-## 前端启动
+## 启动与停止
 
-1. 在仓库根目录启动后端依赖、Nacos、Gateway 和需要的业务服务。Gateway 默认端口 `8080`。
-2. 在另一个 PowerShell 窗口执行：
+在仓库根目录开 PowerShell：
 
-   ```powershell
-   node frontend/server.js
-   ```
+```powershell
+.\scripts\start-local-dependencies.ps1
+python scripts/publish_nacos_config.py
+$env:DB_PORT = '3307'
+$env:JWT_KEYSTORE_LOCATION = 'file:./dev-secrets/hmall.jks'
+$env:JWT_KEYSTORE_PASSWORD = '<本机 JKS 密码>'
+.\scripts\start-services.ps1
+node frontend/server.js
+```
 
-3. 打开 <http://127.0.0.1:8090/>。本地静态服务器负责页面与资源，`/api/*` 代理到 Gateway `http://127.0.0.1:8080/*`。
-4. 如果 Gateway 不是本机 8080：
+`start-services.ps1` 会启动七个 Spring 可执行 JAR，并将本地生活服务端口覆写到 8088。若 JAR 不存在，先执行 `.\mvnw.cmd -DskipTests install`。前端需另开终端运行；若 8090 已有监听则无需重复启动。停止由项目脚本启动的 Java 业务服务：
 
-   ```powershell
-   $env:GATEWAY_URL = 'http://127.0.0.1:8080'
-   $env:FRONTEND_PORT = '8090'
-   node frontend/server.js
-   ```
+```powershell
+.\scripts\stop-services.ps1
+```
 
-## 页面人工操作流程
+依赖服务可在任务结束时通过对应进程/服务管理器停止；不要停止或改写机器原有 MySQL80（3306）。所有项目服务只绑定本机地址，测试脚本会拒绝远程 Gateway。
 
-1. **登录**：打开 `/login.html`，输入手机号，点“发送验证码”。从 `user-service` 日志查看开发验证码（只记录手机号后四位，不会打印验证码）；在当前实现中需在 Redis 查询 `login:code:<手机号>`，两分钟内输入并登录。也可打开 `/login2.html` 使用已存在的用户名和密码。
-2. **首页/笔记**：登录后查看首页分类与热门笔记，打开笔记详情；在浏览器开发者工具的 Network 中确认请求走 `/api`，并检查 `GET /blog/hot`、`GET /blog/{id}` 和点赞状态。
-3. **商户浏览**：首页分类进入商户列表，打开商户详情，核对商户信息与优惠券列表。
-4. **个人页**：点击个人页，检查 `/user/me`、`/user/info/{id}`、`/blog/of/me`；切换“关注”页，滚动加载并检查 `/blog/of/follow` 是否持续返回新内容。
-5. **关注/他人主页**：从笔记进入作者页，关注和取消关注，检查按钮状态；查看共同关注及作者笔记。
-6. **发布笔记**：从发布入口选择商户、上传图片、提交内容；确认响应中的图片地址能通过前端静态服务器读取，笔记进入本人列表。
-7. **优惠券秒杀**：打开有券的商户详情，在测试用户账号上提交秒杀；检查重复提交、库存为 0 和正常下单三种情况。此操作会修改数据库和 Redis 测试数据，只使用隔离测试库。
-8. **退出**：个人页退出后 token 应从 `sessionStorage` 清除并回到登录页；再次访问受保护 API 应收到 401。
+## IDEA 快速核验
 
-## 环境与数据安全
+1. IDEA 选择 **Open**，打开仓库根目录的 `pom.xml`，以 Maven 项目导入；Project SDK 选 JDK 17，Maven Wrapper 选项目自带 wrapper。
+2. 等 Maven 识别 9 个业务/公共模块后，展开 `local-life-service`，确认 `UserController.info` 与 `BlogCommentsController` 路由能被索引；运行根目录 Maven 的 `test` 生命周期。
+3. 服务已启动时不要在 IDEA 再起第二份同端口服务。打开 <http://127.0.0.1:8090/login2.html> 登录演示账号，回到个人页检查头像/昵称/简介为空时的显示，再打开编辑资料页确认资料能读取；本项目当前个人资料页只支持读取展示，尚无资料更新 API。
+4. 打开 <http://127.0.0.1:8090/commerce.html>，搜索商品、加购、创建订单并余额支付；在订单完成后检查支付结果和状态。
+5. 打开笔记详情页，查看评论列表并新增一条评论；再在 Network 面板确认请求通过 `/api` 到 Gateway。评论列表只显示未隐藏评论。
+6. Gateway/Nacos/业务服务运行日志位于 `.local-runtime\service-logs`。若 IDEA 启动某个 Spring 服务失败，先检查对应日志、端口占用、JDK 及 `JWT_KEYSTORE_LOCATION` / `JWT_KEYSTORE_PASSWORD` 环境变量。
 
-- 本机原有 MySQL80（3306）服务正在运行，但 root 登录口令未知；没有修改或重置它。另已创建隔离 MySQL 8.0.39 测试实例，绑定 `127.0.0.1:3307`，并将点评 SQL 导入新建的 `local_life` schema（11 张表、14 个商户样例）。测试实例数据目录位于 `F:\intern2026\.local-runtime\mysql-test`。
-- 本机尚未发现 Docker、Nacos、Redis、RabbitMQ 命令。需要真实联调前，先创建隔离的开发 schema 和服务配置；不要对现有数据库执行 `hmdp.sql`（脚本包含 `DROP TABLE`）。
-- `local-life-service` 的图片目录可由 `IMAGE_UPLOAD_DIR` 环境变量覆盖，默认 `./frontend/public/imgs/`。
-- 点评开发验证码目前仅写入 Redis，需从 Redis 查询；未接入短信供应商。
+## 自动化验证记录
 
-## 测试记录规则
+| 日期 | 命令/动作 | 结果 |
+|---|---|---|
+| 2026-10-23 | `python scripts/check_api_surface.py` | 56 个 HTTP mappings |
+| 2026-10-23 | `python scripts/test_http_integration.py` | 58 次真实 Gateway HTTP 调用通过；包含下单、RabbitMQ 支付通知、秒杀下单、上传和删除 |
+| 2026-10-23 | `python scripts/test_frontend_smoke.py` | 12 页面 HTTP 200，无页面级 JavaScript 错误 |
+| 2026-10-23 | `python scripts/test_commerce_browser.py` | Edge 完成商品搜索、购物车、下单、余额支付和订单状态检查 |
+| 2026-10-23 | `.\mvnw.cmd -q -DskipTests install` | 通过；10 个 Maven reactor 项目 |
 
-每次运行记录日期、Git commit、执行命令、环境版本、测试总数/通过/失败、失败摘要与原始输出位置。性能指标必须在独立压测中实际测得；这里的接口人工验收数据不能替代压测数据。
+浏览器测试依赖安装到仓库外隔离目录：`python -m pip install --target F:\intern2026\.local-runtime\python-packages -r scripts/requirements-test.txt`，再设置 `$env:PYTHONPATH` 指向此目录。脚本会自动寻找 Edge；如未自动找到，可设置 `EDGE_EXECUTABLE`。
+
+## 测试账号及数据边界
+
+集成测试用来源 SQL 中的 Jack 演示账号（密码 `123`），测试写入隔离数据库，不要把测试地址改为远程环境。验证码由本地 Redis 保存，未接短信供应商。图片上传目录默认 `frontend/public/imgs`，自动化上传用例会删除测试图片。测试可能留下业务记录，应在可丢弃的开发库执行。
+
+## 未验证范围
+
+目前没有可报告的吞吐、延迟、成功率或超卖压测指标。Seata 仍显式禁用；目前实际运行验证的是 Nacos 注册与配置、Gateway/Feign 调用、Redis 缓存、RabbitMQ 支付结果通知等分布式链路，不应写成 Seata 全局事务已验证。资料更新、评论隐藏/管理以及异常参数的完整边界矩阵尚未实现或测试。
