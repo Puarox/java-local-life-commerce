@@ -13,11 +13,16 @@ import com.hmall.user.domain.vo.UserLoginVO;
 import com.hmall.user.enums.UserStatus;
 import com.hmall.user.mapper.UserMapper;
 import com.hmall.user.service.IUserService;
+import cn.hutool.core.util.RandomUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 import org.springframework.util.Assert;
+
+import java.util.concurrent.TimeUnit;
 
 /**
  * <p>
@@ -37,20 +42,48 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
 
     private final JwtProperties jwtProperties;
 
+    private final StringRedisTemplate redisTemplate;
+
+    private static final String LOGIN_CODE_PREFIX = "login:code:";
+
     @Override
     public UserLoginVO login(LoginFormDTO loginDTO) {
-        // 1.数据校验
-        String username = loginDTO.getUsername();
-        String password = loginDTO.getPassword();
-        // 2.根据用户名或手机号查询
-        User user = lambdaQuery().eq(User::getUsername, username).one();
-        Assert.notNull(user, "用户名错误");
+        User user;
+        if (StringUtils.hasText(loginDTO.getPhone())) {
+            String key = LOGIN_CODE_PREFIX + loginDTO.getPhone();
+            String expectedCode = redisTemplate.opsForValue().get(key);
+            if (!StringUtils.hasText(expectedCode) || !expectedCode.equals(loginDTO.getCode())) {
+                throw new BadRequestException("手机号或验证码错误");
+            }
+            user = lambdaQuery().eq(User::getPhone, loginDTO.getPhone()).one();
+            if (user == null) {
+                user = new User()
+                        .setUsername(loginDTO.getPhone())
+                        .setPhone(loginDTO.getPhone())
+                        .setNickName("用户" + loginDTO.getPhone().substring(Math.max(0, loginDTO.getPhone().length() - 4)))
+                        .setIcon("")
+                        .setPassword(passwordEncoder.encode(RandomUtil.randomString(32)))
+                        .setBalance(0)
+                        .setStatus(UserStatus.NORMAL);
+                save(user);
+            }
+            redisTemplate.delete(key);
+        } else {
+            String username = loginDTO.getUsername();
+            String password = loginDTO.getPassword();
+            if (!StringUtils.hasText(username) || !StringUtils.hasText(password)) {
+                throw new BadRequestException("请提供用户名密码或手机号验证码");
+            }
+            user = lambdaQuery().eq(User::getUsername, username).one();
+            Assert.notNull(user, "用户名或密码错误");
+        }
         // 3.校验是否禁用
         if (user.getStatus() == UserStatus.FROZEN) {
             throw new ForbiddenException("用户被冻结");
         }
         // 4.校验密码
-        if (!passwordEncoder.matches(password, user.getPassword())) {
+        if (!StringUtils.hasText(loginDTO.getPhone())
+                && !passwordEncoder.matches(loginDTO.getPassword(), user.getPassword())) {
             throw new BadRequestException("用户名或密码错误");
         }
         // 5.生成TOKEN
@@ -65,6 +98,31 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
     }
 
     @Override
+    public void sendCode(String phone) {
+        if (!StringUtils.hasText(phone) || !phone.matches("\\+?[0-9]{7,15}")) {
+            throw new BadRequestException("手机号格式错误");
+        }
+        String code = RandomUtil.randomNumbers(6);
+        redisTemplate.opsForValue().set(LOGIN_CODE_PREFIX + phone, code, 2, TimeUnit.MINUTES);
+        log.info("Development SMS code generated for login; phone suffix={}",
+                phone.substring(Math.max(0, phone.length() - 4)));
+    }
+
+    @Override
+    public com.hmall.api.dto.UserProfileDTO getProfile(Long userId) {
+        User user = getById(userId);
+        if (user == null) {
+            return null;
+        }
+        com.hmall.api.dto.UserProfileDTO profile = new com.hmall.api.dto.UserProfileDTO();
+        profile.setId(user.getId());
+        profile.setUsername(user.getUsername());
+        profile.setNickName(StringUtils.hasText(user.getNickName()) ? user.getNickName() : user.getUsername());
+        profile.setIcon(user.getIcon());
+        return profile;
+    }
+
+    @Override
     public void deductMoney(String pw, Integer totalFee) {
         log.info("开始扣款");
         // 1.校验密码
@@ -76,7 +134,10 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
 
         // 2.尝试扣款
         try {
-            baseMapper.updateMoney(UserContext.getUser(), totalFee);
+            int updated = baseMapper.updateMoney(UserContext.getUser(), totalFee);
+            if (updated != 1) {
+                throw new RuntimeException("扣款失败，余额不足或用户不存在");
+            }
         } catch (Exception e) {
             throw new RuntimeException("扣款失败，可能是余额不足！", e);
         }

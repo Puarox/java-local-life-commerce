@@ -3,14 +3,12 @@ package com.hmdp.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.hmdp.dto.Result;
-import com.hmdp.dto.UserDTO;
 import com.hmdp.entity.Blog;
-import com.hmdp.entity.User;
 import com.hmdp.service.IBlogService;
-import com.hmdp.service.IUserService;
 import com.hmdp.utils.SystemConstants;
-import com.hmdp.utils.UserHolder;
-import org.springframework.beans.BeanUtils;
+import com.hmall.api.client.UserClient;
+import com.hmall.api.dto.UserProfileDTO;
+import com.hmall.common.utils.UserContext;
 import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
@@ -31,15 +29,19 @@ public class BlogController {
     @Resource
     private IBlogService blogService;
     @Resource
-    private IUserService userService;
+    private UserClient userClient;
 
     @PostMapping
     public Result saveBlog(@RequestBody Blog blog) {
         // 获取登录用户
-        User user = UserHolder.getUser();
-        UserDTO userDTO = new UserDTO();
-        BeanUtils.copyProperties(user, userDTO);
-        blog.setUserId(userDTO.getId());
+        Long userId = UserContext.getUser();
+        if (userId == null) {
+            return Result.fail("请先登录");
+        }
+        UserProfileDTO profile = userClient.getProfile(userId);
+        blog.setUserId(userId);
+        blog.setName(profile == null ? null : profile.getNickName());
+        blog.setIcon(profile == null ? null : profile.getIcon());
         // 保存探店博文
         blogService.save(blog);
         // 返回id
@@ -57,12 +59,10 @@ public class BlogController {
     @GetMapping("/of/me")
     public Result queryMyBlog(@RequestParam(value = "current", defaultValue = "1") Integer current) {
         // 获取登录用户
-        User user = UserHolder.getUser();
-        UserDTO userDTO = new UserDTO();
-        BeanUtils.copyProperties(user, userDTO);
+        Long userId = UserContext.getUser();
         // 根据用户查询
         Page<Blog> page = blogService.query()
-                .eq("user_id", userDTO.getId()).page(new Page<>(current, SystemConstants.MAX_PAGE_SIZE));
+                .eq("user_id", userId).page(new Page<>(current, SystemConstants.MAX_PAGE_SIZE));
         // 获取当前页数据
         List<Blog> records = page.getRecords();
         return Result.ok(records);
@@ -79,9 +79,11 @@ public class BlogController {
         // 查询用户
         records.forEach(blog ->{
             Long userId = blog.getUserId();
-            User user = userService.getById(userId);
-            blog.setName(user.getNickName());
-            blog.setIcon(user.getIcon());
+            UserProfileDTO profile = userClient.getProfile(userId);
+            if (profile != null) {
+                blog.setName(profile.getNickName());
+                blog.setIcon(profile.getIcon());
+            }
         });
         return Result.ok(records);
     }

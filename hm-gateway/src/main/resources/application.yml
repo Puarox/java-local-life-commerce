@@ -13,4 +13,9 @@ hm:
     excludePaths: # 无需登录校验的路径
       - /search/**
       - /users/login
+      - /users/code
       - /items/**
+      - /shop/**
+      - /shop-type/**
+      - /blog/hot
+      - /user/info/**

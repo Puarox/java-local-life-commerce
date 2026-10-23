@@ -4,6 +4,7 @@ package com.hmall.user.controller;
 import com.hmall.user.domain.dto.LoginFormDTO;
 import com.hmall.user.domain.vo.UserLoginVO;
 import com.hmall.user.service.IUserService;
+import com.hmall.api.dto.UserProfileDTO;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiImplicitParam;
 import io.swagger.annotations.ApiImplicitParams;
@@ -24,6 +25,17 @@ public class UserController {
     @PostMapping("login")
     public UserLoginVO login(@RequestBody @Validated LoginFormDTO loginFormDTO){
         return userService.login(loginFormDTO);
+    }
+
+    @ApiOperation("发送本地开发验证码")
+    @PostMapping("code")
+    public void sendCode(@RequestParam("phone") String phone) {
+        userService.sendCode(phone);
+    }
+
+    @GetMapping("profile/{id}")
+    public UserProfileDTO profile(@PathVariable("id") Long id) {
+        return userService.getProfile(id);
     }
 
     @ApiOperation("扣减余额")

@@ -1,11 +1,11 @@
 spring:
   application:
-    name: service-pay # 服务名称
+    name: gateway # 服务名称
   profiles:
     active: dev
   cloud:
     nacos:
-      server-addr: 192.168.190.129 # nacos地址
+      server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:8848}
     gateway:
       routes:
         - id: item # 路由规则id，自定义，唯一
@@ -28,3 +28,7 @@ spring:
           uri: lb://service-pay
           predicates:
             - Path=/pay-orders/**
+        - id: local-life
+          uri: lb://local-life-service
+          predicates:
+            - Path=/shop/**,/shop-type/**,/blog/**,/blog-comments/**,/follow/**,/voucher/**,/voucher-order/**,/user/**,/upload/**

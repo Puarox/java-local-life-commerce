@@ -1,25 +1,20 @@
 package com.hmdp.utils;
 
-import com.hmdp.entity.User;
+import com.hmall.common.utils.UserContext;
 import org.springframework.web.servlet.HandlerInterceptor;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import javax.servlet.http.HttpSession;
 
 public class LoginInterceptor implements HandlerInterceptor {
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
 
-        HttpSession session = request.getSession();
-        Object user = session.getAttribute("user");
-        if (user == null) {
+        if (UserContext.getUser() == null) {
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED) ;
             return false ;
         }
-        UserHolder.saveUser((User)user) ;
-
-        return false ;
+        return true;
 
     }
 

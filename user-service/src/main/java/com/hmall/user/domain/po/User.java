@@ -45,6 +45,10 @@ public class User implements Serializable {
      */
     private String phone;
 
+    private String nickName;
+
+    private String icon;
+
     /**
      * 创建时间
      */

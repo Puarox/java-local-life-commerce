@@ -2,9 +2,15 @@ server:
   port: 8081
 spring:
   application:
-    name: hmdp
+    name: local-life-service
+  cloud:
+    nacos:
+      discovery:
+        server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:8848}
+      config:
+        server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:8848}
   datasource:
-    driver-class-name: com.mysql.jdbc.Driver
+    driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://${DB_HOST:127.0.0.1}:${DB_PORT:3306}/${DB_NAME:local_life}?useSSL=false&serverTimezone=UTC
     username: ${DB_USERNAME:root}
     password: ${DB_PASSWORD:}
