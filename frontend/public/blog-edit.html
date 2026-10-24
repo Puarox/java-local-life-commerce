@@ -94,6 +94,12 @@
     created() {
       this.checkLogin();
       this.queryShops();
+      const shopId = util.getUrlParam("shopId");
+      if (shopId) {
+        axios.get("/shop/" + encodeURIComponent(shopId))
+          .then(({data}) => { this.selectedShop = data; })
+          .catch(err => this.$message.error(err));
+      }
     },
     methods: {
       queryShops() {
@@ -106,6 +112,10 @@
         this.showDialog = false;
       },
       submitBlog() {
+        if (!this.selectedShop.id) {
+          this.$message.error("请先选择关联商户");
+          return;
+        }
         let {...data} = this.params;
         data.images = this.fileList.join(",");
         data.shopId = this.selectedShop.id;

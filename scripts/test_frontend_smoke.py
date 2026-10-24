@@ -7,7 +7,7 @@ BASE_URL = os.getenv("FRONTEND_URL", "http://127.0.0.1:8090")
 ROUTES = [
     "/", "/login.html", "/login2.html", "/index.html", "/shop-list.html",
     "/shop-detail.html", "/blog-detail.html", "/blog-edit.html", "/info.html",
-    "/info-edit.html", "/other-info.html", "/commerce.html",
+    "/info-edit.html", "/other-info.html", "/commerce.html", "/vouchers.html",
 ]
 EDGE = os.getenv("EDGE_EXECUTABLE")
 if not EDGE:

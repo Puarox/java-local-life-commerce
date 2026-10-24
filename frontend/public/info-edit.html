@@ -1,136 +1,30 @@
-<!DOCTYPE html>
-<html lang="en">
+<!doctype html>
+<html lang="zh-CN">
 <head>
-  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0">
-  <title>黑马点评</title>
-  <!-- 引入样式 -->
-  <link rel="stylesheet" href="./css/element.css">
-  <link href="./css/main.css" rel="stylesheet">
-  <link href="./css/info.css" rel="stylesheet">
-
-  <style type="text/css">
-
-  </style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>编辑资料 · 黑马点评</title>
+  <link rel="stylesheet" href="/css/profile-edit.css">
 </head>
 <body>
-<div id="app">
-  <div class="header">
-    <div class="header-back-btn" @click="goBack" ><i class="el-icon-arrow-left"></i></div>
-    <div class="header-title">资料编辑&nbsp;&nbsp;&nbsp;</div>
-  </div>
-  <div class="edit-container">
-    <div class="info-box">
-      <div class="info-item">
-        <div class="info-label">头像</div>
-        <div class="info-btn">
-          <img width="35" :src="user.icon || '/imgs/icons/default-icon.png'" alt="">
-          <div><i class="el-icon-arrow-right"></i></div>
-        </div>
-      </div>
-      <div class="divider"></div>
-      <div class="info-item">
-        <div class="info-label">昵称</div>
-        <div class="info-btn">
-          <div>{{user.nickName}}</div>
-          <div>
-            <i class="el-icon-arrow-right"></i>
-          </div>
-        </div>
-      </div>
-      <div class="divider"></div>
-      <div class="info-item">
-        <div class="info-label">个人介绍</div>
-        <div class="info-btn">
-          <div style="overflow: hidden; width: 150px;text-align: right">{{info.introduce || '介绍一下自己'}}</div>
-          <div>
-            <i class="el-icon-arrow-right"></i>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div class="info-box">
-      <div class="info-item">
-        <div class="info-label">性别</div>
-        <div class="info-btn">
-          <div>{{info.gender || '选择'}}</div>
-          <div><i class="el-icon-arrow-right"></i></div>
-        </div>
-      </div>
-      <div class="divider"></div>
-      <div class="info-item">
-        <div class="info-label">城市</div>
-        <div class="info-btn">
-          <div>{{info.city || '选择'}}</div>
-          <div><i class="el-icon-arrow-right"></i></div>
-        </div>
-      </div>
-      <div class="divider"></div>
-      <div class="info-item">
-        <div class="info-label">生日</div>
-        <div class="info-btn">
-          <div>{{info.birthday || '添加'}}</div>
-          <div><i class="el-icon-arrow-right"></i></div>
-        </div>
-      </div>
-    </div>
-
-    <div class="info-box">
-      <div class="info-item">
-        <div class="info-label">我的积分</div>
-        <div class="info-btn">
-          <div>查看积分</div>
-          <div><i class="el-icon-arrow-right"></i></div>
-        </div>
-      </div>
-      <div class="divider"></div>
-      <div class="info-item">
-        <div class="info-label">会员等级</div>
-        <div class="info-btn">
-          <div><a href="javascript:void(0)">成为VIP尊享特权</a></div>
-          <div><i class="el-icon-arrow-right"></i></div>
-        </div>
-      </div>
-    </div>
-  </div>
-  <foot-bar :active-btn="4"></foot-bar>
-</div>
-<script src="./js/vue.js"></script>
-<script src="./js/axios.min.js"></script>
-<!-- 引入组件库 -->
-<script src="./js/element.js"></script>
-<script src="./js/common.js"></script>
-<script src="./js/footer.js"></script>
-<script>
-
-  const app = new Vue({
-    el: "#app",
-    data: {
-      user: "",
-      info: {},
-    },
-    created() {
-      this.checkLogin();
-    },
-    methods: {
-      checkLogin() {
-        // 查询用户信息
-        axios.get("/user/me")
-        .then(({data}) => {
-          this.user = data;
-          this.info = JSON.parse(sessionStorage.getItem("userInfo")) || {}
-        })
-        .catch(err => {
-          this.$message.error(err);
-          setTimeout(() => location.href = "login.html", 1000)
-        })
-      },
-      goBack(){
-        history.back();
-      }
-    },
-
-  })
-</script>
+  <header class="page-header"><a href="/info.html" aria-label="返回个人主页">← 返回个人主页</a><strong>编辑资料</strong></header>
+  <main>
+    <div class="intro"><p>个人主页</p><h1>让别人认识你。</h1><span>填写的昵称、头像和介绍会显示在点评社区。保存后可回到个人主页查看。</span></div>
+    <form id="profile-form">
+      <section class="form-card" aria-labelledby="basic-title"><h2 id="basic-title">公开资料</h2>
+        <div class="avatar-preview"><img id="avatar-preview" src="/imgs/icons/default-icon.png" alt="头像预览"><p>头像预览<br><small>填写下方图片地址后实时更新</small></p></div>
+        <label for="nickname">昵称 <span>必填，最多 32 字</span></label><input id="nickname" name="nickname" type="text" required maxlength="32" autocomplete="nickname" placeholder="别人会看到的名字">
+        <label for="avatar-url">头像图片地址 <span>可留空</span></label><input id="avatar-url" name="avatar-url" type="url" maxlength="255" placeholder="https://example.com/avatar.jpg">
+        <label for="intro">个人介绍 <span>最多 128 字</span></label><textarea id="intro" name="intro" maxlength="128" rows="3" placeholder="介绍一下你喜欢的店和生活方式"></textarea>
+      </section>
+      <section class="form-card" aria-labelledby="other-title"><h2 id="other-title">更多资料</h2>
+        <label for="city">所在城市</label><input id="city" name="city" type="text" maxlength="64" placeholder="例如：杭州">
+        <div class="field-row"><div><label for="gender">性别</label><select id="gender" name="gender"><option value="">暂不填写</option><option value="false">男</option><option value="true">女</option></select></div><div><label for="birthday">生日</label><input id="birthday" name="birthday" type="date"></div></div>
+      </section>
+      <div class="action-row"><button id="save" type="submit">保存资料</button><a href="/info.html">取消</a></div>
+      <p id="feedback" role="status" aria-live="polite"></p>
+    </form>
+  </main>
+  <script src="/js/profile-edit.js"></script>
 </body>
 </html>

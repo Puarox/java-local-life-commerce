@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>附近好券 · 黑马点评</title>
+  <link rel="stylesheet" href="/css/vouchers.css">
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="/index.html" aria-label="返回点评首页"><span class="brand-mark">券</span><span>黑马点评 <small>/ 附近好券</small></span></a>
+    <nav aria-label="主导航"><a href="/index.html">找好店</a><a href="/commerce.html">逛商品</a><a href="/info.html">我的主页</a></nav>
+  </header>
+  <main>
+    <section class="hero">
+      <div class="hero-copy"><p class="eyebrow">LOCAL FINDS · 到店福利</p><h1>好店有好券，<br><em>抢到就能看见。</em></h1><p>挑选附近商户的限时券。下单后在“我的券”里完成余额支付，订单状态会跟着更新。</p></div>
+      <div class="hero-ticket" aria-hidden="true"><div class="ticket-top"><span>附近好券</span><strong id="activity-count">—</strong></div><div class="ticket-bottom">正在进行或即将开始的活动</div></div>
+    </section>
+    <section class="voucher-section" aria-label="到店券">
+      <div class="section-heading"><div><p class="eyebrow">DISCOVER / 领取</p><h2>到店券</h2></div><p>活动时间和库存以服务端为准</p></div>
+      <div class="tabs" role="tablist" aria-label="券页面">
+        <button id="tab-activities" class="tab is-active" role="tab" aria-selected="true" aria-controls="activities-panel" type="button">限时活动</button>
+        <button id="tab-mine" class="tab" role="tab" aria-selected="false" aria-controls="mine-panel" type="button">我的券</button>
+      </div>
+      <div id="activities-panel" role="tabpanel" aria-labelledby="tab-activities"><div id="activities" class="voucher-grid" aria-live="polite"><p class="empty">正在查找附近好券…</p></div></div>
+      <div id="mine-panel" role="tabpanel" aria-labelledby="tab-mine" hidden><div id="my-orders" class="order-list" aria-live="polite"></div><div class="more-row"><button id="more-orders" type="button" hidden>加载更多</button></div></div>
+    </section>
+  </main>
+  <div id="notice" class="notice" role="status" aria-live="polite"></div>
+  <script src="/js/vouchers.js"></script>
+</body>
+</html>

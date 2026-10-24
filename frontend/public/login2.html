@@ -77,8 +77,10 @@
               // 保存用户信息到session
               sessionStorage.setItem("token", data.token);
             }
-            // 跳转到首页
-            location.href = "/info.html"
+            const requested = new URLSearchParams(location.search).get("redirect");
+            const destination = requested ? new URL(requested, location.origin) : null;
+            location.href = destination && destination.origin === location.origin
+              ? destination.pathname + destination.search + destination.hash : "/info.html"
           })
           .catch(err => this.$message.error(err))
       },

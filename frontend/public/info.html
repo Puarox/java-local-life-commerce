@@ -52,9 +52,10 @@
     </div>
   </div>
   <div class="introduce">
-    <span v-if="info.introduce"></span>
+    <span v-if="info.introduce">{{info.introduce}}</span>
     <span v-else>添加个人简介，让大家更好的认识你 <i class="el-icon-edit"></i></span>
   </div>
+  <a href="/vouchers.html?tab=mine" style="display:block;margin:10px 15px;padding:12px 15px;border-radius:10px;background:#e1f1e7;color:#22543c;text-decoration:none;font-weight:700;">我的到店券 · 查看抢券订单与支付状态 →</a>
   <div class="content">
     <el-tabs v-model="activeName" @tab-click="handleClick">
       <el-tab-pane label="笔记" name="1">

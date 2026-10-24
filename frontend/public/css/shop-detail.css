@@ -318,3 +318,11 @@
     border-radius: 5px;
     margin-right: 5px;
 }
+.shop-blog-empty {padding:18px 4px;color:#82848a;font-size:13px;line-height:1.6;}
+.shop-blog-card {display:flex;gap:12px;align-items:center;padding:14px 0;border-bottom:1px solid #f0efee;color:#333;text-decoration:none;}
+.shop-blog-card img {width:78px;height:72px;object-fit:cover;border-radius:8px;background:#f4f4f4;}
+.shop-blog-card>div {min-width:0;flex:1;}
+.shop-blog-card strong {display:block;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.shop-blog-card p {font-size:12px;color:#666;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin:7px 0;}
+.shop-blog-card small {color:#999;font-size:11px;}
+.shop-blog-card>span {color:#f63;font-weight:bold;}
