@@ -16,7 +16,7 @@ feign:
   main:
     allow-circular-references: true
   sentinel:
-    enabled: true
+    enabled: false
 hm:
   jwt:
     location: "${JWT_KEYSTORE_LOCATION:file:./dev-secrets/hmall.jks}"

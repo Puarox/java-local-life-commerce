@@ -80,7 +80,7 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         try {
             itemClient.deductStock(detailDTOS);
         } catch (Exception e) {
-            throw new RuntimeException("库存不足！");
+            throw new BadRequestException("库存不足，订单已回滚", e);
         }
         return order.getId();
     }

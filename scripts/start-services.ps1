@@ -32,7 +32,8 @@ foreach ($service in $services) {
     if ($listening) { Write-Output "$name port $port already listening"; continue }
     $jar = Join-Path $root "$name\target\$name-1.0.0.jar"
     if (-not (Test-Path -LiteralPath $jar)) { throw "Missing $jar; run .\mvnw.cmd -DskipTests package first." }
-    $args = @('-Xms64m','-Xmx192m','-XX:MaxMetaspaceSize=180m','-jar',$jar,
+    $args = @('--add-opens=java.base/java.lang=ALL-UNNAMED',
+        '-Xms64m','-Xmx192m','-XX:MaxMetaspaceSize=180m','-jar',$jar,
         '--server.address=127.0.0.1','--spring.cloud.nacos.discovery.ip=127.0.0.1')
     if ($name -eq 'local-life-service') { $args += '--server.port=8088' }
     $process = Start-Process -FilePath $java -ArgumentList $args -WorkingDirectory $root -PassThru -WindowStyle Hidden `

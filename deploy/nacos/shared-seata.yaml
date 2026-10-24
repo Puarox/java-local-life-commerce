@@ -1,2 +1,10 @@
 seata:
-  enabled: false
+  enabled: true
+  tx-service-group: local_life_tx_group
+  service:
+    vgroup-mapping:
+      local_life_tx_group: default
+    grouplist:
+      default: ${SEATA_SERVER_ADDR:127.0.0.1:8091}
+  registry:
+    type: file

@@ -52,3 +52,5 @@ foreach ($port in $ports) {
     if (-not $ready) { throw "Dependency did not open port $port. Check logs in $logs." }
     Write-Output "dependency port $port ready"
 }
+
+& (Join-Path $PSScriptRoot 'start-seata.ps1') -RuntimeDir $runtime -DbPort $DbPort

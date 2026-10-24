@@ -10,7 +10,7 @@ import org.springframework.web.client.RestTemplate;
 
 @EnableFeignClients(basePackages = "com.hmall.api.client",defaultConfiguration = DefaultFeignConfig.class)
 @MapperScan("com.hmall.trade.mapper")
-@SpringBootApplication(scanBasePackages = {"com.hmall.trade","com.hmall.common.utils"})
+@SpringBootApplication(scanBasePackages = {"com.hmall.trade", "com.hmall.common.utils", "com.hmall.common.advice"})
 public class TradeApplication {
     public static void main(String[] args) {
         SpringApplication.run(TradeApplication.class, args);
