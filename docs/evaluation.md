@@ -1,6 +1,6 @@
 # 评测记录
 
-记录更新时间：2026-10-23。测试以当前工作区源码为对象，提交前需用新 commit hash 替换“工作区未提交”标记。
+记录更新时间：2026-10-24。测试以当前工作区源码为对象，提交前需用新 commit hash 替换“工作区未提交”标记。
 
 ## 功能与构建验证
 
@@ -8,7 +8,7 @@
 |---|---|---|
 | Maven 构建 | 通过 | `mvnw.cmd -q -DskipTests install`；10 个 Maven reactor 项目 |
 | Controller 路由盘点 | 通过 | `python scripts/check_api_surface.py`，56 个 HTTP mappings |
-| 全量 API 联调 | 通过 | `python scripts/test_http_integration.py`，58 次 HTTP 调用；覆盖所有映射，包含支付消息更新订单状态 |
+| 全量 API 联调 | 通过 | `python scripts/test_http_integration.py`，59 次 HTTP 调用；覆盖所有映射，包含错误支付密码的 400 响应和支付消息更新订单状态 |
 | 前端静态与运行检查 | 通过 | 12 页面 Edge 无 pageerror；电商浏览器流完成搜索、加购、余额支付 |
 | 消息队列链路 | 通过 | RabbitMQ 收到支付结果后，订单状态由待支付更新为已支付 |
 | 其他分布式能力 | 部分通过 | Nacos 注册/配置、Gateway 路由和 Feign、Redis 缓存/锁、RabbitMQ 已在本地联调；Seata 保持禁用，没有验证全局事务 |

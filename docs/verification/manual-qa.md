@@ -1,6 +1,6 @@
 # 本地运行与人工验收
 
-更新时间：2026-10-23
+更新时间：2026-10-24
 
 ## 已验证环境
 
@@ -47,7 +47,7 @@ node frontend/server.js
 | 日期 | 命令/动作 | 结果 |
 |---|---|---|
 | 2026-10-23 | `python scripts/check_api_surface.py` | 56 个 HTTP mappings |
-| 2026-10-23 | `python scripts/test_http_integration.py` | 58 次真实 Gateway HTTP 调用通过；包含下单、RabbitMQ 支付通知、秒杀下单、上传和删除 |
+| 2026-10-24 | `python scripts/test_http_integration.py` | 59 次真实 Gateway HTTP 调用通过；包含错误支付密码返回 400、下单、RabbitMQ 支付通知、秒杀下单、上传和删除 |
 | 2026-10-23 | `python scripts/test_frontend_smoke.py` | 12 页面 HTTP 200，无页面级 JavaScript 错误 |
 | 2026-10-23 | `python scripts/test_commerce_browser.py` | Edge 完成商品搜索、购物车、下单、余额支付和订单状态检查 |
 | 2026-10-23 | `.\mvnw.cmd -q -DskipTests install` | 通过；10 个 Maven reactor 项目 |
@@ -56,7 +56,7 @@ node frontend/server.js
 
 ## 测试账号及数据边界
 
-集成测试用来源 SQL 中的 Jack 演示账号（密码 `123`），测试写入隔离数据库，不要把测试地址改为远程环境。验证码由本地 Redis 保存，未接短信供应商。图片上传目录默认 `frontend/public/imgs`，自动化上传用例会删除测试图片。测试可能留下业务记录，应在可丢弃的开发库执行。
+集成测试用来源 SQL 中的 Jack 演示账号（密码 `123`），测试写入隔离数据库，不要把测试地址改为远程环境。短信验证码登录新建的账号会生成不可用于登录的随机密码且初始余额为 0，因此不能直接做余额支付；请使用有余额的密码账号登录并重新加购下单。支付密码错误或余额不足现在应返回 400 业务消息，不应显示 500。验证码由本地 Redis 保存，未接短信供应商。图片上传目录默认 `frontend/public/imgs`，自动化上传用例会删除测试图片。测试可能留下业务记录，应在可丢弃的开发库执行。
 
 ## 未验证范围
 

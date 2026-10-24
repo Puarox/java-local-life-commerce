@@ -9,7 +9,7 @@ import org.springframework.web.client.RestTemplate;
 
 @EnableFeignClients(basePackages = "com.hmall.api.client")
 @MapperScan("com.hmall.pay.mapper")
-@SpringBootApplication(scanBasePackages = {"com.hmall.pay","com.hmall.common.utils"})
+@SpringBootApplication(scanBasePackages = {"com.hmall.pay", "com.hmall.common.utils", "com.hmall.common.advice"})
 public class PayApplication {
     public static void main(String[] args) {
         SpringApplication.run(PayApplication.class, args);

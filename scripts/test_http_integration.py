@@ -75,6 +75,9 @@ try:
                   "amount": order["totalFee"], "payChannelCode": "balance", "payType": 5,
                   "orderInfo": "integration"})
     call("pay.list", "GET", "/pay-orders")
+    bad_payment = call("pay.wrongPassword", "POST", f"/pay-orders/{pay_id}",
+                       body={"pw": "wrong-test-password"}, expected=400)
+    assert bad_payment["msg"] == "余额支付失败，请检查支付密码和账户余额"
     call("pay.balance", "POST", f"/pay-orders/{pay_id}", body={"pw": "123"})
     for _ in range(10):
         paid = session.get(BASE + f"/orders/{order_id}", timeout=10).json()

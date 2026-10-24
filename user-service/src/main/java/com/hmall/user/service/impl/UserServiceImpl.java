@@ -2,7 +2,6 @@ package com.hmall.user.service.impl;
 
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.hmall.common.exception.BadRequestException;
-import com.hmall.common.exception.BizIllegalException;
 import com.hmall.common.exception.ForbiddenException;
 import com.hmall.common.utils.JwtTool;
 import com.hmall.common.utils.UserContext;
@@ -132,18 +131,19 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         // 1.校验密码
         User user = getById(UserContext.getUser());
         if(user == null || !passwordEncoder.matches(pw, user.getPassword())){
-            // 密码错误
-            throw new BizIllegalException("用户密码错误");
+            throw new BadRequestException("支付密码错误");
         }
 
         // 2.尝试扣款
         try {
             int updated = baseMapper.updateMoney(UserContext.getUser(), totalFee);
             if (updated != 1) {
-                throw new RuntimeException("扣款失败，余额不足或用户不存在");
+                throw new BadRequestException("账户余额不足");
             }
+        } catch (BadRequestException e) {
+            throw e;
         } catch (Exception e) {
-            throw new RuntimeException("扣款失败，可能是余额不足！", e);
+            throw new RuntimeException("扣款失败，请稍后重试", e);
         }
         log.info("扣款成功");
     }
