@@ -6,7 +6,7 @@
 
 - Java 17 运行 Spring Boot 2.7.12 项目；源码按 Java 11 语言级别编译。
 - MySQL 8.0.39 隔离实例：`127.0.0.1:3307`，数据目录 `F:\intern2026\.local-runtime\mysql-test`。点评 schema 有 11 张表及 14 个样例商户；电商各服务使用独立 schema。
-- Redis 3.2.100：`127.0.0.1:6379`；Nacos 2.2.3 standalone：`127.0.0.1:8848`；RabbitMQ 3.13.7：`127.0.0.1:5672`。
+- Redis 3.2.100：`127.0.0.1:6379`；Nacos 2.2.3 standalone：`127.0.0.1:8848`；RabbitMQ 3.13.7：`127.0.0.1:5672`；Seata 1.5.2 TC：`127.0.0.1:8091`（控制台 `http://127.0.0.1:7091/`）。
 - Spring 服务：Gateway `8080`、商品 `8081`、用户 `8082`、购物车 `8083`、订单 `8086`、支付 `8087`、本地生活 `8088`。
 - 静态前端 `http://127.0.0.1:8090/`。七个 Spring 服务的日志写入仓库内忽略提交的 `.runtime` 目录；依赖运行数据位于仓库外 `F:\intern2026\.local-runtime`。
 - `deploy/nacos` 中四份共享配置由 `python scripts/publish_nacos_config.py` 发布。JWT JKS 在 `dev-secrets`，被 `.gitignore` 排除。
@@ -25,7 +25,7 @@ $env:JWT_KEYSTORE_PASSWORD = '<本机 JKS 密码>'
 node frontend/server.js
 ```
 
-`start-services.ps1` 会启动七个 Spring 可执行 JAR，并将本地生活服务端口覆写到 8088。若 JAR 不存在，先执行 `.\mvnw.cmd -DskipTests install`。前端需另开终端运行；若 8090 已有监听则无需重复启动。停止由项目脚本启动的 Java 业务服务：
+`start-local-dependencies.ps1` 会从本机官方 Seata 1.5.2 压缩包解压并启动 TC，创建五个业务库的 AT `undo_log`。`start-services.ps1` 会启动七个 Spring 可执行 JAR，并将本地生活服务端口覆写到 8088；Java 17 需要的 Seata 兼容启动参数已包含在脚本中。若 JAR 不存在，先执行 `.\mvnw.cmd -DskipTests install`。前端需另开终端运行；若 8090 已有监听则无需重复启动。停止由项目脚本启动的 Java 业务服务：
 
 ```powershell
 .\scripts\stop-services.ps1
@@ -43,6 +43,20 @@ node frontend/server.js
 6. 打开笔记详情页，查看评论列表并新增一条评论；再在 Network 面板确认请求通过 `/api` 到 Gateway。评论列表只显示未隐藏评论。
 7. 业务服务日志位于 `.runtime`；Nacos 等依赖日志在各自的运行目录。若 IDEA 启动某个 Spring 服务失败，先检查对应日志、端口占用、JDK 及 `JWT_KEYSTORE_LOCATION` / `JWT_KEYSTORE_PASSWORD` 环境变量。若在 IDEA 中手动创建演示券，还需设置 `LOCAL_LIFE_ADMIN_USER_ID=1`。
 
+## Seata 与压测复现
+
+先确认 Seata 控制台 <http://127.0.0.1:7091/> 可访问，TC 的 8091 端口正在监听。默认演示控制台账号由本机官方发行包提供；不要把这套配置暴露到公网。`shared-seata.yaml` 经 `publish_nacos_config.py` 发布后，交易、商品、购物车、用户和支付服务会连接 TC。
+
+在已启动的隔离环境中，从仓库根目录依次运行：
+
+```powershell
+python scripts/test_seata_rollback.py
+python scripts/test_seckill_contention.py
+python scripts/benchmark_local.py --concurrency 10 --requests 3000 --warmup 100
+```
+
+回滚脚本创建库存 1 的临时商品，先加购再尝试下单 2 件，检查交易订单与明细、购物车和库存，并清理临时商品。秒杀脚本创建临时券，结束后下架，已抢到的券订单仍留在隔离库。读压测不写业务数据，自动把逐请求 CSV 与汇总 JSON 写到 `docs/verification/results`。三份脚本都拒绝非本机 Gateway；数据库核验使用本机 MySQL CLI，可通过 `MYSQL_CLIENT`、`DB_PORT`、`DB_USERNAME` 和 `DB_PASSWORD` 设置连接。压测时不要并行运行其他业务脚本，否则结果会混入额外负载。
+
 ## 自动化验证记录
 
 | 日期 | 命令/动作 | 结果 |
@@ -51,6 +65,9 @@ node frontend/server.js
 | 2026-10-24 | `python scripts/test_http_integration.py` | 72 次真实 Gateway HTTP 调用通过；包含错误支付密码返回 400、商城及到店券余额支付、RabbitMQ 状态更新、上传和删除 |
 | 2026-10-24 | `python scripts/test_frontend_smoke.py` | 13 页面 HTTP 200，无页面级 JavaScript 错误（需要设置隔离安装目录的 `PYTHONPATH`） |
 | 2026-10-24 | Edge 页面交互检查 | 活动页只展示有效演示券；门店 1 和 21 的探店笔记从真实接口返回；4 个页面无 `pageerror` |
+| 2026-10-24 | `python scripts/test_seata_rollback.py` | 库存不足返回 400；交易订单及明细计数不变、购物车恢复、库存仍为 1；TC 日志有全局回滚 |
+| 2026-10-24 | `python scripts/test_seckill_contention.py` | 同一账号对库存 1 的券同时发起 20 次请求：1 次成功、库存 0、订单 1 条 |
+| 2026-10-24 | `python scripts/benchmark_local.py --concurrency 10 --requests 3000 --warmup 100` | 活动列表读接口 3000/3000 成功；414.87 请求/秒，P95 38.25 ms，P99 50.98 ms；原始结果在 `docs/verification/results` |
 | 2026-10-23 | `python scripts/test_commerce_browser.py` | Edge 完成商品搜索、购物车、下单、余额支付和订单状态检查 |
 | 2026-10-23 | `.\mvnw.cmd -q -DskipTests install` | 通过；10 个 Maven reactor 项目 |
 
@@ -62,4 +79,4 @@ node frontend/server.js
 
 ## 未验证范围
 
-目前没有可报告的吞吐、延迟、成功率或超卖压测指标。Seata 仍显式禁用；目前实际运行验证的是 Nacos 注册与配置、Gateway/Feign 调用、Redis 缓存、RabbitMQ 支付结果通知等分布式链路，不应写成 Seata 全局事务已验证。评论隐藏/管理以及异常参数的完整边界矩阵尚未实现或测试。券余额支付涉及用户、支付和本地生活服务，现有异步通知尚无消息发件箱与跨库原子提交保证。
+本机读接口压测是 Windows 单机、一个客户端进程、单个服务实例的小规模结果，不能外推为生产容量。20 次秒杀请求都来自同一账号，只验证锁、唯一约束和库存 1 场景，不代表多用户高并发超卖已穷尽验证。Seata AT 已验证商品下单跨库回滚；券余额支付涉及用户、支付和本地生活服务，其异步通知仍无消息发件箱与跨库原子提交保证。评论隐藏/管理及异常参数的完整边界矩阵尚未实现或测试。

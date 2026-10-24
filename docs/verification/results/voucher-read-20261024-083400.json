@@ -1,0 +1,26 @@
+{
+  "started_utc": "2026-10-24T08:34:00.183162+00:00",
+  "git_commit": "0d1b1d85c33c8fde402cf4e68dd4bc37ca215ab8",
+  "scenario": "GET active vouchers via Gateway; single client host; keep-alive per worker",
+  "url": "http://127.0.0.1:8080/voucher/active",
+  "concurrency": 10,
+  "warmup_requests": 100,
+  "measured_requests": 3000,
+  "elapsed_seconds": 7.231,
+  "successes": 3000,
+  "failures": 0,
+  "success_rate": 1.0,
+  "throughput_rps": 414.87,
+  "latency_ms": {
+    "mean": 23.99,
+    "p50": 22.41,
+    "p95": 38.25,
+    "p99": 50.98,
+    "max": 68.092
+  },
+  "client": {
+    "python": "3.13.0",
+    "system": "Windows-11-10.0.22631-SP0",
+    "processor": "Intel64 Family 6 Model 186 Stepping 2, GenuineIntel"
+  }
+}

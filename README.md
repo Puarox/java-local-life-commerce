@@ -63,7 +63,7 @@ $env:JWT_KEYSTORE_PASSWORD = "YOUR_LOCAL_PASSWORD"
 
 本地生活 API 单独启动时默认端口为 `8081`；统一启动脚本会覆盖为 `8088`，以避开商品服务的 `8081`。Gateway 为 `8080`，静态前端为 `8090`。其余服务和依赖端口见 [`docs/verification/manual-qa.md`](docs/verification/manual-qa.md)。
 
-本机隔离环境完成配置后，可执行 `scripts/start-services.ps1` 启动七个 Spring 服务，`scripts/stop-services.ps1` 停止由脚本启动的 Java 服务。启动前要启动 MySQL、Redis、Nacos、RabbitMQ，并发布 `deploy/nacos` 中的共享配置；本仓库不把这些第三方运行时二进制或数据库文件提交到 Git。接口联调脚本 `python scripts/test_http_integration.py` 会写入隔离测试数据库，只允许访问本机 Gateway；测试账号和数据准备见人工验收文档。
+本机隔离环境完成配置后，可执行 `scripts/start-services.ps1` 启动七个 Spring 服务，`scripts/stop-services.ps1` 停止由脚本启动的 Java 服务。启动前要启动 MySQL、Redis、Nacos、RabbitMQ 和 Seata 1.5.2 TC，并发布 `deploy/nacos` 中的共享配置。`scripts/start-local-dependencies.ps1` 会调用 `scripts/start-seata.ps1`，为交易、商品、购物车、用户和支付库初始化 AT 模式 `undo_log`；Seata 1.5.2 官方压缩包放在 `F:\intern2026\.local-runtime\seata-server-1.5.2.zip`。本仓库不提交第三方运行时二进制或数据库文件。接口联调脚本 `python scripts/test_http_integration.py` 会写入隔离测试数据库，只允许访问本机 Gateway；测试账号和数据准备见人工验收文档。
 
 首次需要在前端演示秒杀时，可在服务启动后设置 `DEMO_LOGIN_PASSWORD` 为本机 Jack 演示账号密码，再运行 `python scripts/seed_demo_voucher.py`。脚本只连接本机 Gateway，已有有效演示活动时不会重复创建。打开 <http://127.0.0.1:8090/vouchers.html> 浏览活动、抢券和查看“我的券”；普通券可从商户详情购买。两种券都在“我的券”完成余额支付。
 

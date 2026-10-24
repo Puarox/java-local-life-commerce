@@ -1,0 +1,151 @@
+{
+  "scenario": "one user, 20 concurrent claims, initial stock 1",
+  "voucher_id": 26,
+  "attempts": 20,
+  "successes": 1,
+  "remaining_stock": 0,
+  "orders": 1,
+  "elapsed_seconds": 0.069,
+  "responses": [
+    {
+      "attempt": 6,
+      "http_status": 200,
+      "success": false,
+      "message": "正在处理该用户的领券请求",
+      "latency_ms": 19.97
+    },
+    {
+      "attempt": 1,
+      "http_status": 200,
+      "success": false,
+      "message": "正在处理该用户的领券请求",
+      "latency_ms": 20.92
+    },
+    {
+      "attempt": 3,
+      "http_status": 200,
+      "success": false,
+      "message": "正在处理该用户的领券请求",
+      "latency_ms": 19.71
+    },
+    {
+      "attempt": 2,
+      "http_status": 200,
+      "success": false,
+      "message": "正在处理该用户的领券请求",
+      "latency_ms": 17.61
+    },
+    {
+      "attempt": 0,
+      "http_status": 200,
+      "success": false,
+      "message": "正在处理该用户的领券请求",
+      "latency_ms": 19.78
+    },
+    {
+      "attempt": 7,
+      "http_status": 200,
+      "success": false,
+      "message": "正在处理该用户的领券请求",
+      "latency_ms": 25.35
+    },
+    {
+      "attempt": 9,
+      "http_status": 200,
+      "success": false,
+      "message": "正在处理该用户的领券请求",
+      "latency_ms": 25.81
+    },
+    {
+      "attempt": 8,
+      "http_status": 200,
+      "success": false,
+      "message": "正在处理该用户的领券请求",
+      "latency_ms": 29.99
+    },
+    {
+      "attempt": 5,
+      "http_status": 200,
+      "success": false,
+      "message": "正在处理该用户的领券请求",
+      "latency_ms": 36.66
+    },
+    {
+      "attempt": 11,
+      "http_status": 200,
+      "success": false,
+      "message": "正在处理该用户的领券请求",
+      "latency_ms": 30.17
+    },
+    {
+      "attempt": 10,
+      "http_status": 200,
+      "success": false,
+      "message": "正在处理该用户的领券请求",
+      "latency_ms": 31.07
+    },
+    {
+      "attempt": 4,
+      "http_status": 200,
+      "success": true,
+      "message": "",
+      "latency_ms": 46.2
+    },
+    {
+      "attempt": 17,
+      "http_status": 200,
+      "success": false,
+      "message": "正在处理该用户的领券请求",
+      "latency_ms": 24.04
+    },
+    {
+      "attempt": 16,
+      "http_status": 200,
+      "success": false,
+      "message": "正在处理该用户的领券请求",
+      "latency_ms": 24.4
+    },
+    {
+      "attempt": 12,
+      "http_status": 200,
+      "success": false,
+      "message": "正在处理该用户的领券请求",
+      "latency_ms": 39.01
+    },
+    {
+      "attempt": 19,
+      "http_status": 200,
+      "success": false,
+      "message": "正在处理该用户的领券请求",
+      "latency_ms": 25.75
+    },
+    {
+      "attempt": 14,
+      "http_status": 200,
+      "success": false,
+      "message": "每位用户限领一张",
+      "latency_ms": 36.83
+    },
+    {
+      "attempt": 15,
+      "http_status": 200,
+      "success": false,
+      "message": "正在处理该用户的领券请求",
+      "latency_ms": 32.6
+    },
+    {
+      "attempt": 18,
+      "http_status": 200,
+      "success": false,
+      "message": "正在处理该用户的领券请求",
+      "latency_ms": 24.25
+    },
+    {
+      "attempt": 13,
+      "http_status": 200,
+      "success": false,
+      "message": "每位用户限领一张",
+      "latency_ms": 41.79
+    }
+  ]
+}

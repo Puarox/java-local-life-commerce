@@ -12,4 +12,5 @@ reports/screenshots/
 dev-secrets/
 .runtime/
 *.jks
+__pycache__/
 
