@@ -41,7 +41,9 @@ try:
     login = call("user.login", "POST", "/users/login", body={"username": "Jack", "password": "123"})
     session.headers["authorization"] = login["token"]
     call("user.code", "POST", "/users/code?phone=13900000000")
-    call("user.profile", "GET", "/users/profile/1")
+    profile = call("user.profile", "GET", "/users/profile/1")
+    call("user.updateProfile", "PUT", "/users/me/profile", body={
+        "nickName": profile["nickName"], "icon": profile.get("icon") or ""})
     call("user.deduct", "PUT", "/users/money/deduct?pw=123&amount=1")
     addresses = call("address.list", "GET", "/addresses")
     call("address.one", "GET", f"/addresses/{addresses[0]['id']}")
@@ -104,6 +106,8 @@ try:
     call("blog.one", "GET", f"/blog/{blog_id}")
     call("blog.likes", "GET", f"/blog/likes/{blog_id}")
     call("blog.byUser", "GET", "/blog/of/user?id=1&current=1")
+    shop_blogs = call("blog.byShop", "GET", f"/blog/of/shop/{shop_id}")
+    assert any(str(blog["id"]) == str(blog_id) for blog in shop_blogs)
     call("follow.add", "PUT", "/follow/2/true")
     call("follow.status", "GET", "/follow/or/not/2")
     call("follow.common", "GET", "/follow/common/2")
@@ -119,11 +123,14 @@ try:
     user_info = call("localUser.info", "GET", "/user/info/1")
     assert str(user_info["id"]) == "1" and str(user_info["userId"]) == "1"
     assert "account" not in user_info and "localLife" not in user_info
+    call("localUser.updateInfo", "PUT", "/user/info", body={
+        "city": user_info.get("city") or "", "introduce": user_info.get("introduce") or "",
+        "gender": user_info.get("gender"), "birthday": user_info.get("birthday")})
     call("localUser.sign", "POST", "/user/sign")
     call("localUser.signCount", "GET", "/user/sign/count")
     call("localUser.logout", "POST", "/user/logout")
 
-    call("voucher.normal", "POST", "/voucher", body={"shopId": shop_id,
+    normal_voucher_id = call("voucher.normal", "POST", "/voucher", body={"shopId": shop_id,
          "title": "联调普通券", "payValue": 100, "actualValue": 200, "type": 0})
     now = datetime.now()
     voucher_id = call("voucher.seckill", "POST", "/voucher/seckill", body={"shopId": shop_id,
@@ -131,7 +138,26 @@ try:
          "stock": 2, "beginTime": (now - timedelta(minutes=5)).isoformat(timespec="seconds"),
          "endTime": (now + timedelta(minutes=30)).isoformat(timespec="seconds")})
     call("voucher.list", "GET", f"/voucher/list/{shop_id}")
-    call("voucherOrder.seckill", "POST", f"/voucher-order/seckill/{voucher_id}")
+    active = call("voucher.active", "GET", "/voucher/active")
+    assert any(str(row["id"]) == str(voucher_id) for row in active)
+    normal_order_id = call("voucherOrder.buy", "POST", f"/voucher-order/buy/{normal_voucher_id}")
+    voucher_order_id = call("voucherOrder.seckill", "POST", f"/voucher-order/seckill/{voucher_id}")
+    my_vouchers = call("voucherOrder.me", "GET", "/voucher-order/me?current=1")
+    assert any(str(row["id"]) == str(voucher_order_id) for row in my_vouchers)
+    summary = call("voucherOrder.paymentSummary", "GET", f"/voucher-order/payment/{voucher_order_id}")
+    assert summary["status"] == 1 and summary["totalFee"] == 100
+    for label, voucher_order in (("regular", normal_order_id), ("seckill", voucher_order_id)):
+        voucher_pay_id = call(f"voucherPay.apply.{label}", "POST", f"/pay-orders/voucher/{voucher_order}")
+        call(f"voucherPay.balance.{label}", "POST", f"/pay-orders/{voucher_pay_id}", body={"pw": "123"})
+        for _ in range(12):
+            my_vouchers = session.get(BASE + "/voucher-order/me?current=1", timeout=10).json()["data"]
+            if any(str(row["id"]) == str(voucher_order) and row["status"] == 2 for row in my_vouchers):
+                break
+            time.sleep(0.3)
+        assert any(str(row["id"]) == str(voucher_order) and row["status"] == 2
+                   for row in my_vouchers), f"RabbitMQ did not update {label} voucher order"
+    call("voucher.hideTestActivity", "PUT", f"/voucher/{voucher_id}/status?status=2")
+    call("voucher.hideTestRegular", "PUT", f"/voucher/{normal_voucher_id}/status?status=2")
 
     png = base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/lWsAAAAASUVORK5CYII=")
     image_name = call("upload.add", "POST", "/upload/blog", files={"file": ("test.png", png, "image/png")})

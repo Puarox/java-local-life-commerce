@@ -17,9 +17,12 @@ hm:
       - /items/**
       - /shop/**
       - /shop-type/**
+      - /voucher/active
+      - /voucher/list/**
       - /blog/hot
       - /blog/*
       - /blog/likes/**
       - /blog/of/user
+      - /blog/of/shop/**
       - /blog-comments/*
       - /user/info/**

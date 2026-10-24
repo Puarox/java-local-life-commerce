@@ -2,6 +2,7 @@ package com.hmall.user.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.hmall.user.domain.dto.LoginFormDTO;
+import com.hmall.user.domain.dto.UpdateProfileDTO;
 import com.hmall.user.domain.po.User;
 import com.hmall.user.domain.vo.UserLoginVO;
 import com.hmall.api.dto.UserProfileDTO;
@@ -22,6 +23,8 @@ public interface IUserService extends IService<User> {
     void sendCode(String phone);
 
     UserProfileDTO getProfile(Long userId);
+
+    UserProfileDTO updateProfile(UpdateProfileDTO profile);
 
     void deductMoney(String pw, Integer totalFee);
 }

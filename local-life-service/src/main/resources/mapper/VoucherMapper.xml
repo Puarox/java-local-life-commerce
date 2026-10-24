@@ -10,4 +10,16 @@
         LEFT JOIN  tb_seckill_voucher sv ON v.id = sv.voucher_id
         WHERE v.shop_id = #{shopId} AND v.status = 1
     </select>
+
+    <select id="queryActiveActivities" resultType="com.hmdp.dto.VoucherActivityVO">
+        SELECT v.id, v.shop_id, s.name AS shop_name, s.images AS shop_images,
+               v.title, v.sub_title, v.pay_value, v.actual_value,
+               sv.stock, sv.begin_time, sv.end_time
+        FROM tb_voucher v
+        JOIN tb_seckill_voucher sv ON sv.voucher_id = v.id
+        JOIN tb_shop s ON s.id = v.shop_id
+        WHERE v.type = 1 AND v.status = 1 AND sv.end_time &gt; NOW()
+        ORDER BY sv.begin_time ASC, v.id DESC
+        LIMIT 100
+    </select>
 </mapper>

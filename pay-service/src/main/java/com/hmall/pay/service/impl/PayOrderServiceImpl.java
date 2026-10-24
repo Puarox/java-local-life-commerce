@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.core.toolkit.StringUtils;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.hmall.api.client.TradeClient;
 import com.hmall.api.client.UserClient;
+import com.hmall.api.client.VoucherOrderClient;
 import com.hmall.api.dto.OrderSummaryDTO;
 import com.hmall.common.exception.BadRequestException;
 import com.hmall.common.exception.BizIllegalException;
@@ -43,7 +44,11 @@ public class PayOrderServiceImpl extends ServiceImpl<PayOrderMapper, PayOrder> i
 
     private final TradeClient tradeClient;
 
+    private final VoucherOrderClient voucherOrderClient;
+
     private final RabbitTemplate rabbitTemplate;
+    private static final String COMMERCE_SOURCE = "{\"source\":\"commerce\"}";
+    private static final String VOUCHER_SOURCE = "{\"source\":\"voucher\"}";
     @Override
     public String applyPayOrder(PayApplyDTO applyDTO) {
         OrderSummaryDTO order = tradeClient.getOrder(applyDTO.getBizOrderNo());
@@ -55,9 +60,38 @@ public class PayOrderServiceImpl extends ServiceImpl<PayOrderMapper, PayOrder> i
             throw new BizIllegalException("订单状态或金额不匹配");
         }
         // 1.幂等性校验
-        PayOrder payOrder = checkIdempotent(applyDTO);
+        PayOrder payOrder = checkIdempotent(applyDTO, COMMERCE_SOURCE);
         // 2.返回结果
         return payOrder.getId().toString();
+    }
+
+    @Override
+    public String applyVoucherPayOrder(Long voucherOrderId) {
+        OrderSummaryDTO voucherOrder;
+        try {
+            voucherOrder = voucherOrderClient.getPaymentSummary(voucherOrderId);
+        } catch (FeignException e) {
+            if (e.status() == 403 || e.status() == 404) {
+                throw new ForbiddenException("券订单不存在或无权支付");
+            }
+            throw e;
+        }
+        if (voucherOrder == null || UserContext.getUser() == null
+                || !UserContext.getUser().equals(voucherOrder.getUserId())) {
+            throw new ForbiddenException("券订单不存在或无权支付");
+        }
+        if (voucherOrder.getStatus() == null || voucherOrder.getStatus() != 1
+                || voucherOrder.getTotalFee() == null || voucherOrder.getTotalFee() < 1) {
+            throw new BizIllegalException("券订单状态或金额不允许支付");
+        }
+        PayApplyDTO applyDTO = PayApplyDTO.builder()
+                .bizOrderNo(voucherOrderId)
+                .amount(voucherOrder.getTotalFee())
+                .payChannelCode("balance")
+                .payType(5)
+                .orderInfo("本地生活代金券")
+                .build();
+        return checkIdempotent(applyDTO, VOUCHER_SOURCE).getId().toString();
     }
 
     @Override
@@ -65,7 +99,8 @@ public class PayOrderServiceImpl extends ServiceImpl<PayOrderMapper, PayOrder> i
     public void tryPayOrderByBalance(PayOrderFormDTO payOrderFormDTO) {
         // 1.查询支付单
         PayOrder po = getById(payOrderFormDTO.getId());
-        if (po == null || !UserContext.getUser().equals(po.getBizUserId())) {
+        if (po == null || UserContext.getUser() == null
+                || !UserContext.getUser().equals(po.getBizUserId())) {
             throw new ForbiddenException("支付单不存在或无权支付");
         }
         // 2.判断状态
@@ -89,7 +124,9 @@ public class PayOrderServiceImpl extends ServiceImpl<PayOrderMapper, PayOrder> i
         }
 
         try {
-            rabbitTemplate.convertAndSend("pay.direct", "pay.success", po.getBizOrderNo());
+            String routingKey = VOUCHER_SOURCE.equals(po.getExpandJson())
+                    ? "voucher.pay.success" : "pay.success";
+            rabbitTemplate.convertAndSend("pay.direct", routingKey, po.getBizOrderNo());
         }catch (Exception e){
            log.error("发送支付状态失败");
         }
@@ -112,16 +149,21 @@ public class PayOrderServiceImpl extends ServiceImpl<PayOrderMapper, PayOrder> i
     }
 
 
-    private PayOrder checkIdempotent(PayApplyDTO applyDTO) {
+    private PayOrder checkIdempotent(PayApplyDTO applyDTO, String source) {
         // 1.首先查询支付单
         PayOrder oldOrder = queryByBizOrderNo(applyDTO.getBizOrderNo());
         // 2.判断是否存在
         if (oldOrder == null) {
             // 不存在支付单，说明是第一次，写入新的支付单并返回
-            PayOrder payOrder = buildPayOrder(applyDTO);
+            PayOrder payOrder = buildPayOrder(applyDTO, source);
             payOrder.setPayOrderNo(IdWorker.getId());
             save(payOrder);
             return payOrder;
+        }
+        if (!source.equals(oldOrder.getExpandJson())
+                && !(COMMERCE_SOURCE.equals(source) &&
+                     (oldOrder.getExpandJson() == null || oldOrder.getExpandJson().isEmpty()))) {
+            throw new BizIllegalException("业务订单号已被其他支付类型使用");
         }
         // 3.旧单已经存在，判断是否支付成功
         if (PayStatus.TRADE_SUCCESS.equalsValue(oldOrder.getStatus())) {
@@ -136,7 +178,7 @@ public class PayOrderServiceImpl extends ServiceImpl<PayOrderMapper, PayOrder> i
         // 5.旧单已经存在，判断支付渠道是否一致
         if (!StringUtils.equals(oldOrder.getPayChannelCode(), applyDTO.getPayChannelCode())) {
             // 支付渠道不一致，需要重置数据，然后重新申请支付单
-            PayOrder payOrder = buildPayOrder(applyDTO);
+            PayOrder payOrder = buildPayOrder(applyDTO, source);
             payOrder.setId(oldOrder.getId());
             payOrder.setQrCodeUrl("");
             updateById(payOrder);
@@ -147,13 +189,14 @@ public class PayOrderServiceImpl extends ServiceImpl<PayOrderMapper, PayOrder> i
         return oldOrder;
     }
 
-    private PayOrder buildPayOrder(PayApplyDTO payApplyDTO) {
+    private PayOrder buildPayOrder(PayApplyDTO payApplyDTO, String source) {
         // 1.数据转换
         PayOrder payOrder = BeanUtils.toBean(payApplyDTO, PayOrder.class);
         // 2.初始化数据
         payOrder.setPayOverTime(LocalDateTime.now().plusMinutes(120L));
         payOrder.setStatus(PayStatus.WAIT_BUYER_PAY.getValue());
         payOrder.setBizUserId(UserContext.getUser());
+        payOrder.setExpandJson(source);
         return payOrder;
     }
     public PayOrder queryByBizOrderNo(Long bizOrderNo) {

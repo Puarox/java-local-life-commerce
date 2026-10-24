@@ -121,6 +121,17 @@ public class BlogController {
         return Result.ok(page.getRecords());
     }
 
+    @GetMapping("/of/shop/{shopId}")
+    public Result queryShopBlogs(@PathVariable("shopId") Long shopId,
+                                 @RequestParam(value = "current", defaultValue = "1") Integer current) {
+        Page<Blog> page = blogService.lambdaQuery()
+                .eq(Blog::getShopId, shopId)
+                .orderByDesc(Blog::getCreateTime)
+                .page(new Page<>(Math.max(1, current), 10));
+        page.getRecords().forEach(this::fillProfile);
+        return Result.ok(page.getRecords(), page.getTotal());
+    }
+
     @GetMapping("/of/follow")
     public Result queryFollowBlogs(@RequestParam(value = "lastId", required = false) Long lastId,
                                    @RequestParam(value = "offset", defaultValue = "0") Integer offset) {

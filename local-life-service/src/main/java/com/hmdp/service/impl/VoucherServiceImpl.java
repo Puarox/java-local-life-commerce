@@ -42,6 +42,11 @@ public class VoucherServiceImpl extends ServiceImpl<VoucherMapper, Voucher> impl
     }
 
     @Override
+    public Result activeActivities() {
+        return Result.ok(getBaseMapper().queryActiveActivities());
+    }
+
+    @Override
     @Transactional
     public void addSeckillVoucher(Voucher voucher) {
         // 保存优惠券

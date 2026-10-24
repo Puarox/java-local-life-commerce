@@ -7,6 +7,7 @@ import com.hmall.common.utils.JwtTool;
 import com.hmall.common.utils.UserContext;
 import com.hmall.user.config.JwtProperties;
 import com.hmall.user.domain.dto.LoginFormDTO;
+import com.hmall.user.domain.dto.UpdateProfileDTO;
 import com.hmall.user.domain.po.User;
 import com.hmall.user.domain.vo.UserLoginVO;
 import com.hmall.user.enums.UserStatus;
@@ -123,6 +124,26 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         profile.setNickName(StringUtils.hasText(user.getNickName()) ? user.getNickName() : user.getUsername());
         profile.setIcon(user.getIcon());
         return profile;
+    }
+
+    @Override
+    public com.hmall.api.dto.UserProfileDTO updateProfile(UpdateProfileDTO profile) {
+        Long userId = UserContext.getUser();
+        if (userId == null) throw new BadRequestException("请先登录");
+        String nickName = profile.getNickName() == null ? "" : profile.getNickName().trim();
+        String icon = profile.getIcon() == null ? "" : profile.getIcon().trim();
+        if (nickName.isEmpty() || nickName.length() > 32) {
+            throw new BadRequestException("昵称长度应为 1 到 32 字");
+        }
+        if (icon.length() > 255) throw new BadRequestException("头像地址过长");
+        boolean updated = lambdaUpdate()
+                .set(User::getNickName, nickName)
+                .set(User::getIcon, icon)
+                .set(User::getUpdateTime, LocalDateTime.now())
+                .eq(User::getId, userId)
+                .update();
+        if (!updated) throw new BadRequestException("账号不存在");
+        return getProfile(userId);
     }
 
     @Override

@@ -2,6 +2,7 @@ package com.hmall.user.controller;
 
 
 import com.hmall.user.domain.dto.LoginFormDTO;
+import com.hmall.user.domain.dto.UpdateProfileDTO;
 import com.hmall.user.domain.vo.UserLoginVO;
 import com.hmall.user.service.IUserService;
 import com.hmall.api.dto.UserProfileDTO;
@@ -36,6 +37,11 @@ public class UserController {
     @GetMapping("profile/{id}")
     public UserProfileDTO profile(@PathVariable("id") Long id) {
         return userService.getProfile(id);
+    }
+
+    @PutMapping("me/profile")
+    public UserProfileDTO updateProfile(@RequestBody UpdateProfileDTO profile) {
+        return userService.updateProfile(profile);
     }
 
     @ApiOperation("扣减余额")

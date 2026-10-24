@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.hmdp.mapper.VoucherOrderMapper">
+    <select id="pageByUser" resultType="com.hmdp.dto.VoucherOrderVO">
+        SELECT CAST(o.id AS CHAR) AS id, o.voucher_id, v.shop_id,
+               s.name AS shop_name, v.title, v.pay_value,
+               o.status, o.create_time, o.pay_time
+        FROM tb_voucher_order o
+        JOIN tb_voucher v ON v.id = o.voucher_id
+        JOIN tb_shop s ON s.id = v.shop_id
+        WHERE o.user_id = #{userId}
+        ORDER BY o.create_time DESC, o.id DESC
+    </select>
+</mapper>

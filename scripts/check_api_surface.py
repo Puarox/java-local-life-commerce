@@ -20,7 +20,7 @@ for controller in controllers:
     print(f"{count:2}  {controller.relative_to(ROOT)}")
 
 print(f"HTTP mappings: {total}")
-if total != 56:
-    errors.append(f"expected 56 known mappings, found {total}; review docs/verification/api-test-matrix.md")
+if total != 65:
+    errors.append(f"expected 65 known mappings, found {total}; review docs/verification/api-test-matrix.md")
 if errors:
     raise SystemExit("\n".join(errors))

@@ -42,6 +42,12 @@ public class PayController {
         return payOrderService.applyPayOrder(applyDTO);
     }
 
+    @ApiOperation("为本地生活券订单生成余额支付单")
+    @PostMapping("voucher/{voucherOrderId}")
+    public String applyVoucherPayOrder(@PathVariable("voucherOrderId") Long voucherOrderId) {
+        return payOrderService.applyVoucherPayOrder(voucherOrderId);
+    }
+
     @ApiOperation("尝试基于用户余额支付")
     @ApiImplicitParam(value = "支付单id", name = "id")
     @PostMapping("{id}")

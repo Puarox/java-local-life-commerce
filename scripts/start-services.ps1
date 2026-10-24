@@ -8,6 +8,7 @@ $root = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $runtime = [System.IO.Path]::GetFullPath($RuntimeDir)
 New-Item -ItemType Directory -Force -Path $runtime | Out-Null
 $env:DB_PORT = [string]$DbPort
+if (-not $env:LOCAL_LIFE_ADMIN_USER_ID) { $env:LOCAL_LIFE_ADMIN_USER_ID = '1' }
 if (-not $env:JWT_KEYSTORE_LOCATION) {
     $env:JWT_KEYSTORE_LOCATION = 'file:' + ((Join-Path $root 'dev-secrets\hmall.jks') -replace '\\', '/')
 }
