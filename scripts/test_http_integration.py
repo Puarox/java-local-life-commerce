@@ -7,8 +7,10 @@ isolated databases. It must never target a production Gateway.
 
 import base64
 import os
+import subprocess
 import time
 from datetime import datetime, timedelta
+from pathlib import Path
 from urllib.parse import quote
 
 import requests
@@ -19,6 +21,17 @@ if BASE not in ("http://127.0.0.1:8080", "http://localhost:8080"):
     raise SystemExit("Integration test only permits the loopback Gateway")
 session = requests.Session()
 results = []
+
+
+def demo_balance():
+    mysql = os.getenv("MYSQL_CLIENT") or str(Path(os.getenv("ProgramFiles", "")) /
+                 "MySQL/MySQL Server 8.0/bin/mysql.exe")
+    query = subprocess.run([mysql, "-h", "127.0.0.1", "-P", os.getenv("DB_PORT", "3307"),
+                            "-u", os.getenv("DB_USERNAME", "root"), "-D", "hm-user", "-N",
+                            "-e", "SELECT balance FROM user WHERE id=1"],
+                           env={**os.environ, "MYSQL_PWD": os.getenv("DB_PASSWORD", "")},
+                           capture_output=True, text=True, check=True)
+    return int(query.stdout.strip())
 
 
 def call(label, method, path, *, body=None, files=None, expected=200):
@@ -156,6 +169,32 @@ try:
             time.sleep(0.3)
         assert any(str(row["id"]) == str(voucher_order) and row["status"] == 2
                    for row in my_vouchers), f"RabbitMQ did not update {label} voucher order"
+    paid_regular = next(row for row in my_vouchers if str(row["id"]) == str(normal_order_id))
+    paid_seckill = next(row for row in my_vouchers if str(row["id"]) == str(voucher_order_id))
+    assert len(paid_regular["redeemCode"]) == 10 and len(paid_seckill["redeemCode"]) == 10
+    call("voucherOrder.merchantPermission", "GET", "/voucher-order/merchant/permission")
+    call("voucherOrder.redeem", "POST", f'/voucher-order/redeem?code={paid_seckill["redeemCode"]}')
+    call("voucherOrder.redeemAgain", "POST", f'/voucher-order/redeem?code={paid_seckill["redeemCode"]}', expected=400)
+    call("voucherPay.refundUsed", "POST", f"/pay-orders/voucher/{voucher_order_id}/refund", expected=400)
+    balance_before_refund = demo_balance()
+    call("voucherPay.refund", "POST", f"/pay-orders/voucher/{normal_order_id}/refund")
+    assert demo_balance() == balance_before_refund + 100, "refund did not restore balance"
+    call("voucherPay.refundAgain", "POST", f"/pay-orders/voucher/{normal_order_id}/refund", expected=400)
+    after_fulfillment = call("voucherOrder.afterFulfillment", "GET", "/voucher-order/me?current=1")
+    assert next(row for row in after_fulfillment if str(row["id"]) == str(voucher_order_id))["status"] == 3
+    refunded = next(row for row in after_fulfillment if str(row["id"]) == str(normal_order_id))
+    assert refunded["status"] == 6 and "redeemCode" not in refunded
+
+    cancel_voucher_id = call("voucher.cancelFixture", "POST", "/voucher", body={"shopId": shop_id,
+         "title": "联调取消券", "payValue": 100, "actualValue": 200, "type": 0})
+    cancel_order_id = call("voucherOrder.buyForCancel", "POST", f"/voucher-order/buy/{cancel_voucher_id}")
+    call("voucherPay.applyForCancel", "POST", f"/pay-orders/voucher/{cancel_order_id}")
+    call("voucherOrder.cancel", "POST", f"/voucher-order/{cancel_order_id}/cancel")
+    call("voucherOrder.cancelAgain", "POST", f"/voucher-order/{cancel_order_id}/cancel", expected=400)
+    call("voucherPay.applyCanceled", "POST", f"/pay-orders/voucher/{cancel_order_id}", expected=400)
+    canceled = call("voucherOrder.afterCancel", "GET", "/voucher-order/me?current=1")
+    assert next(row for row in canceled if str(row["id"]) == str(cancel_order_id))["status"] == 4
+    call("voucher.hideTestCancel", "PUT", f"/voucher/{cancel_voucher_id}/status?status=2")
     call("voucher.hideTestActivity", "PUT", f"/voucher/{voucher_id}/status?status=2")
     call("voucher.hideTestRegular", "PUT", f"/voucher/{normal_voucher_id}/status?status=2")
 

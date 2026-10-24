@@ -23,7 +23,14 @@
         <button id="tab-mine" class="tab" role="tab" aria-selected="false" aria-controls="mine-panel" type="button">我的券</button>
       </div>
       <div id="activities-panel" role="tabpanel" aria-labelledby="tab-activities"><div id="activities" class="voucher-grid" aria-live="polite"><p class="empty">正在查找附近好券…</p></div></div>
-      <div id="mine-panel" role="tabpanel" aria-labelledby="tab-mine" hidden><div id="my-orders" class="order-list" aria-live="polite"></div><div class="more-row"><button id="more-orders" type="button" hidden>加载更多</button></div></div>
+      <div id="mine-panel" role="tabpanel" aria-labelledby="tab-mine" hidden>
+        <div id="my-orders" class="order-list" aria-live="polite"></div>
+        <div class="more-row"><button id="more-orders" type="button" hidden>加载更多</button></div>
+        <section id="merchant-panel" class="merchant-panel" hidden>
+          <div><p class="eyebrow">MERCHANT / 到店核销</p><h2>商户核销</h2><p>请顾客出示“我的券”中的十位核销码。已核销或已退款的券无法再次使用。</p></div>
+          <form id="redeem-form"><label for="redeem-code">核销码</label><input id="redeem-code" inputmode="numeric" pattern="[0-9]{10}" maxlength="10" placeholder="输入十位数字" required><button class="primary-btn" type="submit">确认核销</button></form>
+        </section>
+      </div>
     </section>
   </main>
   <div id="notice" class="notice" role="status" aria-live="polite"></div>

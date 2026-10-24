@@ -155,6 +155,38 @@ function orderCard(order) {
       finally { button.disabled = false; }
     });
     card.append(form);
+    const cancel = element('button', '取消订单', 'secondary-btn');
+    cancel.type = 'button';
+    cancel.addEventListener('click', async () => {
+      if (!confirm('确定取消这张待支付的券吗？')) return;
+      cancel.disabled = true;
+      try {
+        await api(`/voucher-order/${encodeURIComponent(order.id)}/cancel`, { method: 'POST' });
+        notice('订单已取消。');
+        state.current = 1; await loadMine(); loadActivities();
+      } catch (error) { notice(error.message); cancel.disabled = false; }
+    });
+    card.append(cancel);
+  } else if (order.status === 2) {
+    const use = element('div', undefined, 'voucher-use');
+    use.append(element('span', '到店出示核销码'), element('strong', order.redeemCode || '正在生成…', 'redeem-code'));
+    const refund = element('button', '申请原路退回余额', 'secondary-btn');
+    refund.type = 'button';
+    refund.addEventListener('click', async () => {
+      if (!confirm('确定退款吗？退款后此券不可使用，金额将退回账户余额。')) return;
+      refund.disabled = true;
+      try {
+        await api(`/pay-orders/voucher/${encodeURIComponent(order.id)}/refund`, { method: 'POST' });
+        notice('退款成功，金额已退回账户余额。');
+        state.current = 1; await loadMine();
+      } catch (error) { notice(error.message); refund.disabled = false; }
+    });
+    use.append(refund);
+    card.append(use);
+  } else if (order.status === 3 && order.useTime) {
+    card.append(element('p', `核销时间：${dateLabel(order.useTime)}`, 'order-footnote'));
+  } else if (order.status === 6 && order.refundTime) {
+    card.append(element('p', `退款时间：${dateLabel(order.refundTime)}`, 'order-footnote'));
   }
   return card;
 }
@@ -163,8 +195,11 @@ async function loadMine(append = false) {
   if (!sessionStorage.getItem('token')) {
     $('my-orders').replaceChildren(empty('登录后可以查看和支付已抢到的券。', '使用账号密码登录', loginUrl));
     $('more-orders').hidden = true;
+    $('merchant-panel').hidden = true;
     return;
   }
+  api('/voucher-order/merchant/permission').then(() => { $('merchant-panel').hidden = false; })
+    .catch(() => { $('merchant-panel').hidden = true; });
   if (state.busy) return;
   state.busy = true;
   try {
@@ -196,5 +231,18 @@ function showTab(name) {
 $('tab-activities').addEventListener('click', () => showTab('activities'));
 $('tab-mine').addEventListener('click', () => showTab('mine'));
 $('more-orders').addEventListener('click', () => { state.current++; loadMine(true); });
+$('redeem-form').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const input = $('redeem-code');
+  const button = event.currentTarget.querySelector('button');
+  button.disabled = true;
+  try {
+    const body = await api(`/voucher-order/redeem?code=${encodeURIComponent(input.value)}`, { method: 'POST' });
+    notice(`核销成功，券订单 ${body.data} 已使用。`);
+    input.value = '';
+    state.current = 1; await loadMine();
+  } catch (error) { notice(error.message); }
+  finally { button.disabled = false; }
+});
 loadActivities();
 if (new URLSearchParams(location.search).get('tab') === 'mine') showTab('mine');

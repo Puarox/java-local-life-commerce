@@ -25,7 +25,7 @@ $env:JWT_KEYSTORE_PASSWORD = '<本机 JKS 密码>'
 node frontend/server.js
 ```
 
-`start-local-dependencies.ps1` 会从本机官方 Seata 1.5.2 压缩包解压并启动 TC，创建五个业务库的 AT `undo_log`。`start-services.ps1` 会启动七个 Spring 可执行 JAR，并将本地生活服务端口覆写到 8088；Java 17 需要的 Seata 兼容启动参数已包含在脚本中。若 JAR 不存在，先执行 `.\mvnw.cmd -DskipTests install`。前端需另开终端运行；若 8090 已有监听则无需重复启动。停止由项目脚本启动的 Java 业务服务：
+`start-local-dependencies.ps1` 会从本机官方 Seata 1.5.2 压缩包解压并启动 TC，创建业务库的 AT `undo_log`，并准备支付发件箱表和券核销字段。`start-services.ps1` 会启动七个 Spring 可执行 JAR，并将本地生活服务端口覆写到 8088；Java 17 需要的 Seata 兼容启动参数已包含在脚本中。若 JAR 不存在，先执行 `.\mvnw.cmd -DskipTests install`。前端需另开终端运行；若 8090 已有监听则无需重复启动。停止由项目脚本启动的 Java 业务服务：
 
 ```powershell
 .\scripts\stop-services.ps1
@@ -38,7 +38,7 @@ node frontend/server.js
 1. IDEA 选择 **Open**，打开仓库根目录的 `pom.xml`，以 Maven 项目导入；Project SDK 选 JDK 17，Maven Wrapper 选项目自带 wrapper。
 2. 等 Maven 识别 9 个业务/公共模块后，展开 `local-life-service`，确认 `UserController.info` 与 `BlogCommentsController` 路由能被索引；运行根目录 Maven 的 `test` 生命周期。
 3. 服务已启动时不要在 IDEA 再起第二份同端口服务。打开 <http://127.0.0.1:8090/login2.html>，在“用户名”栏输入 `Jack`、密码栏输入 `123` 并勾选用户协议后登录；到个人页的“编辑资料”修改昵称或介绍并保存，再刷新确认新资料仍在。演示结束后可恢复原值。
-4. 打开 <http://127.0.0.1:8090/vouchers.html>，确认未登录也能浏览活动；登录后抢券并在“我的券”中余额支付。商户详情页还可购买普通券，两类券订单的状态都应由 RabbitMQ 通知更新。若没有有效活动，设置 `DEMO_LOGIN_PASSWORD` 后运行 `python scripts/seed_demo_voucher.py` 创建本机演示券。
+4. 打开 <http://127.0.0.1:8090/vouchers.html>，确认未登录也能浏览活动；登录后抢券并在“我的券”中余额支付。待支付券可取消；支付后页面显示核销码并提供退款；Jack 演示管理员可在页面底部核销该码。商户详情页还可购买普通券。若没有有效活动，设置 `DEMO_LOGIN_PASSWORD` 后运行 `python scripts/seed_demo_voucher.py` 创建本机演示券。
 5. 打开 <http://127.0.0.1:8090/commerce.html>，搜索商品、加购、创建订单并余额支付；在订单完成后检查支付结果和状态。
 6. 打开笔记详情页，查看评论列表并新增一条评论；再在 Network 面板确认请求通过 `/api` 到 Gateway。评论列表只显示未隐藏评论。
 7. 业务服务日志位于 `.runtime`；Nacos 等依赖日志在各自的运行目录。若 IDEA 启动某个 Spring 服务失败，先检查对应日志、端口占用、JDK 及 `JWT_KEYSTORE_LOCATION` / `JWT_KEYSTORE_PASSWORD` 环境变量。若在 IDEA 中手动创建演示券，还需设置 `LOCAL_LIFE_ADMIN_USER_ID=1`。
@@ -61,8 +61,8 @@ python scripts/benchmark_local.py --concurrency 10 --requests 3000 --warmup 100
 
 | 日期 | 命令/动作 | 结果 |
 |---|---|---|
-| 2026-10-24 | `python scripts/check_api_surface.py` | 65 个 HTTP mappings |
-| 2026-10-24 | `python scripts/test_http_integration.py` | 72 次真实 Gateway HTTP 调用通过；包含错误支付密码返回 400、商城及到店券余额支付、RabbitMQ 状态更新、上传和删除 |
+| 2026-10-24 | `python scripts/check_api_surface.py` | 72 个 HTTP mappings |
+| 2026-10-24 | `python scripts/test_http_integration.py` | 87 次真实 Gateway HTTP 调用通过；包含支付、重试/对账、取消、核销、退款、重复操作拒绝和余额回退断言 |
 | 2026-10-24 | `python scripts/test_frontend_smoke.py` | 13 页面 HTTP 200，无页面级 JavaScript 错误（需要设置隔离安装目录的 `PYTHONPATH`） |
 | 2026-10-24 | Edge 页面交互检查 | 活动页只展示有效演示券；门店 1 和 21 的探店笔记从真实接口返回；4 个页面无 `pageerror` |
 | 2026-10-24 | `python scripts/test_seata_rollback.py` | 库存不足返回 400；交易订单及明细计数不变、购物车恢复、库存仍为 1；TC 日志有全局回滚 |
@@ -77,6 +77,12 @@ python scripts/benchmark_local.py --concurrency 10 --requests 3000 --warmup 100
 
 集成测试用来源 SQL 中的 Jack 演示账号（密码 `123`），测试写入隔离数据库，不要把测试地址改为远程环境。短信验证码登录新建的账号会生成不可用于登录的随机密码且初始余额为 0，因此不能直接做余额支付；请使用有余额的密码账号登录并重新加购下单。支付密码错误或余额不足现在应返回 400 业务消息，不应显示 500。验证码由本地 Redis 保存，未接短信供应商。图片上传目录默认 `frontend/public/imgs`，自动化上传用例会删除测试图片。测试可能留下业务记录，应在可丢弃的开发库执行。
 
+## 支付消息及券履约验证
+
+`pay_outbox` 在余额扣款和支付单成功状态的 Seata 全局事务中落库。发布器启用 RabbitMQ publisher confirms 和 mandatory returns；失败按 2、4、8、16、32、60 秒上限退避并记录错误。每分钟扫描已支付、已确认但较早的通知，与业务订单状态核对；缺失事件会补建，业务单仍待支付时会重新发布。消费者对已经更新的订单允许重复通知。
+
+验证记录：将测试 outbox 事件临时改到不存在的 routing key，RabbitMQ 返回 `NO_ROUTE`，发件箱状态恢复待重试且 attempts 增加；修复 routing key 后事件重新确认。随后将一条已支付商城订单状态临时改回待支付，定时对账日志发现差异并补发，订单最终恢复已支付。HTTP 联调还覆盖核销码只在待使用状态返回、重复核销 400、已使用券退款 400、未核销券退款成功且余额增加 100 分、重复退款 400，以及取消支付单后禁止再次支付。
+
 ## 未验证范围
 
-本机读接口压测是 Windows 单机、一个客户端进程、单个服务实例的小规模结果，不能外推为生产容量。20 次秒杀请求都来自同一账号，只验证锁、唯一约束和库存 1 场景，不代表多用户高并发超卖已穷尽验证。Seata AT 已验证商品下单跨库回滚；券余额支付涉及用户、支付和本地生活服务，其异步通知仍无消息发件箱与跨库原子提交保证。评论隐藏/管理及异常参数的完整边界矩阵尚未实现或测试。
+本机读接口压测是 Windows 单机、一个客户端进程、单个服务实例的小规模结果，不能外推为生产容量。20 次秒杀请求都来自同一账号，只验证锁、唯一约束和库存 1 场景，不代表多用户高并发超卖已穷尽验证。Seata AT 已覆盖余额扣款、支付状态、发件箱事件及退款涉及的用户、支付和券订单写入；RabbitMQ 通知仍是异步最终一致，不属于一个同步数据库事务。评论隐藏/管理及异常参数的完整边界矩阵尚未实现或测试。

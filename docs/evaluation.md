@@ -7,12 +7,13 @@
 | 检查项 | 结果 | 说明 |
 |---|---|---|
 | Maven 构建 | 通过 | `mvnw.cmd -q -DskipTests install`；10 个 Maven reactor 项目 |
-| Controller 路由盘点 | 通过 | `python scripts/check_api_surface.py`，65 个 HTTP mappings |
-| 主要 API 联调 | 通过 | `python scripts/test_http_integration.py`，72 次 HTTP 调用；覆盖主要业务路由，包含错误支付密码的 400 响应和支付消息更新订单状态 |
+| Controller 路由盘点 | 通过 | `python scripts/check_api_surface.py`，72 个 HTTP mappings（含内部 Feign 路由） |
+| 主要 API 联调 | 通过 | `python scripts/test_http_integration.py`，87 次 HTTP 调用；覆盖主要业务路由，包含余额支付、取消、核销、退款及幂等拒绝 |
 | 前端静态与运行检查 | 通过 | 13 页面 Edge 无 pageerror；活动页显示有效券，门店页显示真实笔记；电商浏览器流完成搜索、加购、余额支付 |
-| 消息队列链路 | 通过 | RabbitMQ 收到支付结果后，订单状态由待支付更新为已支付 |
+| 支付通知可靠性 | 通过（隔离环境） | MySQL outbox 与扣款/支付状态在 Seata 事务中提交；RabbitMQ confirm/return、退避重试及定时业务状态对账；注入 NO_ROUTE 和业务订单滞后后自动恢复 |
+| 券履约 | 通过（主要路径） | 待支付取消并关闭支付单；支付后生成核销码；管理员核销；未核销退款到账；重复操作和已核销退款被拒绝 |
 | 商品下单跨库事务 | 通过 | Seata 1.5.2 AT；库存不足时 HTTP 400，交易订单/明细不变、购物车恢复、库存不变；TC 记录全局回滚 |
-| 其他分布式能力 | 部分通过 | Nacos 注册/配置、Gateway/Feign、Redis 缓存/锁、RabbitMQ 已联调；支付后的异步通知不在 Seata 下单事务内 |
+| 其他分布式能力 | 部分通过 | Nacos 注册/配置、Gateway/Feign、Redis 缓存/锁、Seata 支付事务和 RabbitMQ 最终一致链路已联调 |
 | 本机读接口压测 | 通过 | 10 并发、100 次预热、3000 次实测；3000 次成功；414.87 请求/秒，P95 38.25 ms，P99 50.98 ms |
 | 秒杀并发正确性 | 通过（限定场景） | 同一账号 20 次并发抢库存 1 的券，1 次成功，剩余库存 0，订单 1 条 |
 
