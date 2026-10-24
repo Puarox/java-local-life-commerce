@@ -20,10 +20,21 @@ $mysql = if ($env:MYSQL_CLIENT) { $env:MYSQL_CLIENT } else {
 if (-not (Test-Path -LiteralPath $mysql)) { throw "MySQL client not found: $mysql" }
 if ($env:DB_PASSWORD) { $env:MYSQL_PWD = $env:DB_PASSWORD }
 $sql = Join-Path $root 'deploy\sql\seata-undo-log.sql'
-foreach ($database in @('hm-trade', 'hm-item', 'hm-cart', 'hm-user', 'hm-pay')) {
+foreach ($database in @('hm-trade', 'hm-item', 'hm-cart', 'hm-user', 'hm-pay', 'local_life')) {
     Get-Content -LiteralPath $sql -Raw | & $mysql -h 127.0.0.1 -P $DbPort -u `
         $(if ($env:DB_USERNAME) { $env:DB_USERNAME } else { 'root' }) $database
     if ($LASTEXITCODE -ne 0) { throw "Seata undo_log setup failed for $database" }
+}
+Get-Content -LiteralPath (Join-Path $root 'deploy\sql\pay-outbox.sql') -Raw |
+    & $mysql -h 127.0.0.1 -P $DbPort -u $(if ($env:DB_USERNAME) { $env:DB_USERNAME } else { 'root' }) 'hm-pay'
+if ($LASTEXITCODE -ne 0) { throw 'Pay outbox setup failed' }
+$columnCount = & $mysql -h 127.0.0.1 -P $DbPort -u `
+    $(if ($env:DB_USERNAME) { $env:DB_USERNAME } else { 'root' }) -N -e `
+    "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema='local_life' AND table_name='tb_voucher_order' AND column_name='redeem_code'"
+if ([int]$columnCount -eq 0) {
+    Get-Content -LiteralPath (Join-Path $root 'deploy\sql\voucher-redemption.sql') -Raw |
+        & $mysql -h 127.0.0.1 -P $DbPort -u $(if ($env:DB_USERNAME) { $env:DB_USERNAME } else { 'root' }) 'local_life'
+    if ($LASTEXITCODE -ne 0) { throw 'Voucher redemption schema setup failed' }
 }
 
 if (-not (Get-NetTCPConnection -State Listen -LocalPort 8091 -ErrorAction SilentlyContinue)) {

@@ -4,6 +4,8 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.hmall.api.dto.OrderSummaryDTO;
+import com.hmall.api.client.PayOrderClient;
+import com.hmall.common.exception.BadRequestException;
 import com.hmall.common.exception.ForbiddenException;
 import com.hmall.common.utils.UserContext;
 import com.hmdp.dto.Result;
@@ -22,9 +24,11 @@ import org.springframework.dao.DuplicateKeyException;
 import org.springframework.aop.framework.AopContext;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import io.seata.spring.annotation.GlobalTransactional;
 
 import javax.annotation.Resource;
 import java.time.LocalDateTime;
+import java.security.SecureRandom;
 
 @Service
 public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, VoucherOrder>
@@ -38,6 +42,9 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
     private RedissonClient redissonClient;
     @Resource
     private RedisIdWorker redisIdWorker;
+    @Resource
+    private PayOrderClient payOrderClient;
+    private static final SecureRandom REDEEM_RANDOM = new SecureRandom();
 
     @Override
     public Result buyRegularVoucher(Long voucherId) {
@@ -97,18 +104,71 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
     }
 
     public void markPaid(Long id) {
+        String code = String.format("%010d", REDEEM_RANDOM.nextInt(1_000_000_000));
         boolean updated = lambdaUpdate()
                 .set(VoucherOrder::getStatus, 2)
                 .set(VoucherOrder::getPayTime, LocalDateTime.now())
+                .set(VoucherOrder::getRedeemCode, code)
                 .eq(VoucherOrder::getId, id)
                 .eq(VoucherOrder::getStatus, 1)
                 .update();
         if (!updated) {
             VoucherOrder order = getById(id);
-            if (order == null || !Integer.valueOf(2).equals(order.getStatus())) {
+            if (order == null || (order.getStatus() != 2 && order.getStatus() != 3
+                    && order.getStatus() != 6)) {
                 throw new IllegalStateException("券订单支付状态更新失败: " + id);
             }
         }
+    }
+
+    @GlobalTransactional
+    @Transactional(rollbackFor = Exception.class)
+    public void cancelUnpaid(Long id) {
+        Long userId = UserContext.getUser();
+        VoucherOrder order = getById(id);
+        if (order == null || userId == null || !userId.equals(order.getUserId())) {
+            throw new ForbiddenException("券订单不存在或无权取消");
+        }
+        if (order.getStatus() != 1) throw new BadRequestException("只有待支付的券可以取消");
+        payOrderClient.closeUnpaidVoucher(id);
+        boolean changed = lambdaUpdate().set(VoucherOrder::getStatus, 4)
+                .eq(VoucherOrder::getId, id).eq(VoucherOrder::getStatus, 1).update();
+        if (!changed) throw new BadRequestException("券状态已变化，请刷新后重试");
+        Voucher voucher = voucherService.getById(order.getVoucherId());
+        if (voucher != null && Integer.valueOf(1).equals(voucher.getType())) {
+            boolean restored = seckillVoucherService.update()
+                    .setSql("stock = stock + 1")
+                    .eq("voucher_id", order.getVoucherId()).update();
+            if (!restored) throw new IllegalStateException("秒杀库存恢复失败");
+        }
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public Long redeem(String code) {
+        if (code == null || !code.matches("[0-9]{10}")) {
+            throw new BadRequestException("请输入十位核销码");
+        }
+        VoucherOrder order = lambdaQuery().eq(VoucherOrder::getRedeemCode, code).one();
+        if (order == null || order.getStatus() != 2) {
+            throw new BadRequestException("核销码无效或已使用");
+        }
+        boolean changed = lambdaUpdate().set(VoucherOrder::getStatus, 3)
+                .set(VoucherOrder::getUseTime, LocalDateTime.now())
+                .eq(VoucherOrder::getId, order.getId()).eq(VoucherOrder::getStatus, 2).update();
+        if (!changed) throw new BadRequestException("券状态已变化，请刷新后重试");
+        return order.getId();
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public void markRefunded(Long id) {
+        VoucherOrder order = getById(id);
+        if (order == null || !order.getUserId().equals(UserContext.getUser())) {
+            throw new ForbiddenException("券订单不存在或无权退款");
+        }
+        boolean changed = lambdaUpdate().set(VoucherOrder::getStatus, 6)
+                .set(VoucherOrder::getRefundTime, LocalDateTime.now())
+                .eq(VoucherOrder::getId, id).eq(VoucherOrder::getStatus, 2).update();
+        if (!changed) throw new BadRequestException("券已核销或退款状态已变化");
     }
 
     @Override

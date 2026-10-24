@@ -4,7 +4,8 @@
     <select id="pageByUser" resultType="com.hmdp.dto.VoucherOrderVO">
         SELECT CAST(o.id AS CHAR) AS id, o.voucher_id, v.shop_id,
                s.name AS shop_name, v.title, v.pay_value,
-               o.status, o.create_time, o.pay_time
+               o.status, o.create_time, o.pay_time, o.use_time, o.refund_time,
+               CASE WHEN o.status=2 THEN o.redeem_code ELSE NULL END AS redeem_code
         FROM tb_voucher_order o
         JOIN tb_voucher v ON v.id = o.voucher_id
         JOIN tb_shop s ON s.id = v.shop_id

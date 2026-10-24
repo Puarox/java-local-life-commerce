@@ -72,6 +72,9 @@ public class VoucherOrder implements Serializable {
      */
     private LocalDateTime refundTime;
 
+    /** Single-use code shown to the customer after payment. */
+    private String redeemCode;
+
     /**
      * 更新时间
      */

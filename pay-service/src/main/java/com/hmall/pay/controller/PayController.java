@@ -48,6 +48,12 @@ public class PayController {
         return payOrderService.applyVoucherPayOrder(voucherOrderId);
     }
 
+    @ApiOperation("已支付且未核销的到店券原路退回余额")
+    @PostMapping("voucher/{voucherOrderId}/refund")
+    public void refundVoucherPayOrder(@PathVariable("voucherOrderId") Long voucherOrderId) {
+        payOrderService.refundVoucherPayOrder(voucherOrderId);
+    }
+
     @ApiOperation("尝试基于用户余额支付")
     @ApiImplicitParam(value = "支付单id", name = "id")
     @PostMapping("{id}")

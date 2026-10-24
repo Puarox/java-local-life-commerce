@@ -27,6 +27,16 @@ spring:
     default-property-inclusion: non_null # JSON处理时忽略非空字段
 mybatis-plus:
   type-aliases-package: com.hmdp.entity # 别名扫描包
+seata:
+  enabled: true
+  tx-service-group: local_life_tx_group
+  service:
+    vgroup-mapping:
+      local_life_tx_group: default
+    grouplist:
+      default: ${SEATA_SERVER_ADDR:127.0.0.1:8091}
+  registry:
+    type: file
 logging:
   level:
     com.hmdp: debug

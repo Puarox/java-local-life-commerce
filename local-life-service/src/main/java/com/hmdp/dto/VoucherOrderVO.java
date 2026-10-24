@@ -15,4 +15,7 @@ public class VoucherOrderVO {
     private Integer status;
     private LocalDateTime createTime;
     private LocalDateTime payTime;
+    private String redeemCode;
+    private LocalDateTime useTime;
+    private LocalDateTime refundTime;
 }
