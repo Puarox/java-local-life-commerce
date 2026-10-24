@@ -8,7 +8,7 @@
 - MySQL 8.0.39 隔离实例：`127.0.0.1:3307`，数据目录 `F:\intern2026\.local-runtime\mysql-test`。点评 schema 有 11 张表及 14 个样例商户；电商各服务使用独立 schema。
 - Redis 3.2.100：`127.0.0.1:6379`；Nacos 2.2.3 standalone：`127.0.0.1:8848`；RabbitMQ 3.13.7：`127.0.0.1:5672`。
 - Spring 服务：Gateway `8080`、商品 `8081`、用户 `8082`、购物车 `8083`、订单 `8086`、支付 `8087`、本地生活 `8088`。
-- 静态前端 `http://127.0.0.1:8090/`。服务与依赖日志写入 `.local-runtime\service-logs`（运行时目录在仓库同级的 `F:\intern2026` 下，不进 Git）。
+- 静态前端 `http://127.0.0.1:8090/`。七个 Spring 服务的日志写入仓库内忽略提交的 `.runtime` 目录；依赖运行数据位于仓库外 `F:\intern2026\.local-runtime`。
 - `deploy/nacos` 中四份共享配置由 `python scripts/publish_nacos_config.py` 发布。JWT JKS 在 `dev-secrets`，被 `.gitignore` 排除。
 
 ## 启动与停止
@@ -37,18 +37,20 @@ node frontend/server.js
 
 1. IDEA 选择 **Open**，打开仓库根目录的 `pom.xml`，以 Maven 项目导入；Project SDK 选 JDK 17，Maven Wrapper 选项目自带 wrapper。
 2. 等 Maven 识别 9 个业务/公共模块后，展开 `local-life-service`，确认 `UserController.info` 与 `BlogCommentsController` 路由能被索引；运行根目录 Maven 的 `test` 生命周期。
-3. 服务已启动时不要在 IDEA 再起第二份同端口服务。打开 <http://127.0.0.1:8090/login2.html>，在“用户名”栏输入 `Jack`、密码栏输入 `123` 并勾选用户协议后登录；回到个人页检查头像/昵称/简介为空时的显示，再打开编辑资料页确认资料能读取。本项目当前个人资料页只支持读取展示，尚无资料更新 API。
-4. 打开 <http://127.0.0.1:8090/commerce.html>，搜索商品、加购、创建订单并余额支付；在订单完成后检查支付结果和状态。
-5. 打开笔记详情页，查看评论列表并新增一条评论；再在 Network 面板确认请求通过 `/api` 到 Gateway。评论列表只显示未隐藏评论。
-6. Gateway/Nacos/业务服务运行日志位于 `.local-runtime\service-logs`。若 IDEA 启动某个 Spring 服务失败，先检查对应日志、端口占用、JDK 及 `JWT_KEYSTORE_LOCATION` / `JWT_KEYSTORE_PASSWORD` 环境变量。
+3. 服务已启动时不要在 IDEA 再起第二份同端口服务。打开 <http://127.0.0.1:8090/login2.html>，在“用户名”栏输入 `Jack`、密码栏输入 `123` 并勾选用户协议后登录；到个人页的“编辑资料”修改昵称或介绍并保存，再刷新确认新资料仍在。演示结束后可恢复原值。
+4. 打开 <http://127.0.0.1:8090/vouchers.html>，确认未登录也能浏览活动；登录后抢券并在“我的券”中余额支付。商户详情页还可购买普通券，两类券订单的状态都应由 RabbitMQ 通知更新。若没有有效活动，设置 `DEMO_LOGIN_PASSWORD` 后运行 `python scripts/seed_demo_voucher.py` 创建本机演示券。
+5. 打开 <http://127.0.0.1:8090/commerce.html>，搜索商品、加购、创建订单并余额支付；在订单完成后检查支付结果和状态。
+6. 打开笔记详情页，查看评论列表并新增一条评论；再在 Network 面板确认请求通过 `/api` 到 Gateway。评论列表只显示未隐藏评论。
+7. 业务服务日志位于 `.runtime`；Nacos 等依赖日志在各自的运行目录。若 IDEA 启动某个 Spring 服务失败，先检查对应日志、端口占用、JDK 及 `JWT_KEYSTORE_LOCATION` / `JWT_KEYSTORE_PASSWORD` 环境变量。若在 IDEA 中手动创建演示券，还需设置 `LOCAL_LIFE_ADMIN_USER_ID=1`。
 
 ## 自动化验证记录
 
 | 日期 | 命令/动作 | 结果 |
 |---|---|---|
-| 2026-10-23 | `python scripts/check_api_surface.py` | 56 个 HTTP mappings |
-| 2026-10-24 | `python scripts/test_http_integration.py` | 59 次真实 Gateway HTTP 调用通过；包含错误支付密码返回 400、下单、RabbitMQ 支付通知、秒杀下单、上传和删除 |
-| 2026-10-23 | `python scripts/test_frontend_smoke.py` | 12 页面 HTTP 200，无页面级 JavaScript 错误 |
+| 2026-10-24 | `python scripts/check_api_surface.py` | 65 个 HTTP mappings |
+| 2026-10-24 | `python scripts/test_http_integration.py` | 72 次真实 Gateway HTTP 调用通过；包含错误支付密码返回 400、商城及到店券余额支付、RabbitMQ 状态更新、上传和删除 |
+| 2026-10-24 | `python scripts/test_frontend_smoke.py` | 13 页面 HTTP 200，无页面级 JavaScript 错误（需要设置隔离安装目录的 `PYTHONPATH`） |
+| 2026-10-24 | Edge 页面交互检查 | 活动页只展示有效演示券；门店 1 和 21 的探店笔记从真实接口返回；4 个页面无 `pageerror` |
 | 2026-10-23 | `python scripts/test_commerce_browser.py` | Edge 完成商品搜索、购物车、下单、余额支付和订单状态检查 |
 | 2026-10-23 | `.\mvnw.cmd -q -DskipTests install` | 通过；10 个 Maven reactor 项目 |
 
@@ -60,4 +62,4 @@ node frontend/server.js
 
 ## 未验证范围
 
-目前没有可报告的吞吐、延迟、成功率或超卖压测指标。Seata 仍显式禁用；目前实际运行验证的是 Nacos 注册与配置、Gateway/Feign 调用、Redis 缓存、RabbitMQ 支付结果通知等分布式链路，不应写成 Seata 全局事务已验证。资料更新、评论隐藏/管理以及异常参数的完整边界矩阵尚未实现或测试。
+目前没有可报告的吞吐、延迟、成功率或超卖压测指标。Seata 仍显式禁用；目前实际运行验证的是 Nacos 注册与配置、Gateway/Feign 调用、Redis 缓存、RabbitMQ 支付结果通知等分布式链路，不应写成 Seata 全局事务已验证。评论隐藏/管理以及异常参数的完整边界矩阵尚未实现或测试。券余额支付涉及用户、支付和本地生活服务，现有异步通知尚无消息发件箱与跨库原子提交保证。

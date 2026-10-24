@@ -4,9 +4,9 @@
 
 ## 已迁入的能力
 
-- 本地生活：商户缓存与逻辑过期、Redis Geo 附近商户、探店笔记、点赞与关注 Feed、签到、优惠券及秒杀。
+- 本地生活：商户缓存与逻辑过期、Redis Geo 附近商户、探店笔记、点赞与关注 Feed、签到、普通券购买与限时券秒杀。
 - 电商交易：商品、购物车、统一订单、余额扣款、支付状态和消息通知相关模块。
-- 融合部分：Gateway 统一路由；用户服务统一密码登录、开发验证码登录与 JWT；`UserContext` 在服务间传递用户 ID；点评用户资料通过 Feign 查询统一用户服务。
+- 融合部分：Gateway 统一路由；用户服务统一密码登录、开发验证码登录与 JWT；`UserContext` 在服务间传递用户 ID；点评用户资料通过 Feign 查询统一用户服务；券订单通过共享支付服务完成余额支付并接收 RabbitMQ 支付结果。
 - 秒杀一致性：Redisson 用户维度互斥锁、数据库条件扣库存、订单唯一索引共同约束一人一券。
 
 本仓库是源码整合项目，不代表已完成生产部署。验证码目前由 Redis 保存，需通过本地 Redis 读取以完成开发登录；未接入真实短信供应商。
@@ -50,6 +50,7 @@ python scripts/test_frontend_smoke.py
 - `DB_HOST`、`DB_PORT`、`DB_NAME`、`DB_USERNAME`、`DB_PASSWORD`：点评服务数据库连接。
 - `REDIS_HOST`、`REDIS_PORT`：Redis 连接。
 - `JWT_KEYSTORE_LOCATION`、`JWT_KEYSTORE_PASSWORD`：JWT 私钥库位置与密码。密钥文件被 Git 忽略；可用 JDK `keytool` 在 `dev-secrets` 生成本地密钥库，并将环境变量指向它。
+- `LOCAL_LIFE_ADMIN_USER_ID`：允许创建普通券和限时券的演示管理员用户 ID；默认 `0`（禁用创建）。本地启动脚本默认设为来源 SQL 中的 Jack 账号 ID `1`。
 
 首次本地运行可在仓库根目录生成开发密钥（把占位密码替换成自己的本地值）：
 
@@ -63,6 +64,8 @@ $env:JWT_KEYSTORE_PASSWORD = "YOUR_LOCAL_PASSWORD"
 本地生活 API 单独启动时默认端口为 `8081`；统一启动脚本会覆盖为 `8088`，以避开商品服务的 `8081`。Gateway 为 `8080`，静态前端为 `8090`。其余服务和依赖端口见 [`docs/verification/manual-qa.md`](docs/verification/manual-qa.md)。
 
 本机隔离环境完成配置后，可执行 `scripts/start-services.ps1` 启动七个 Spring 服务，`scripts/stop-services.ps1` 停止由脚本启动的 Java 服务。启动前要启动 MySQL、Redis、Nacos、RabbitMQ，并发布 `deploy/nacos` 中的共享配置；本仓库不把这些第三方运行时二进制或数据库文件提交到 Git。接口联调脚本 `python scripts/test_http_integration.py` 会写入隔离测试数据库，只允许访问本机 Gateway；测试账号和数据准备见人工验收文档。
+
+首次需要在前端演示秒杀时，可在服务启动后设置 `DEMO_LOGIN_PASSWORD` 为本机 Jack 演示账号密码，再运行 `python scripts/seed_demo_voucher.py`。脚本只连接本机 Gateway，已有有效演示活动时不会重复创建。打开 <http://127.0.0.1:8090/vouchers.html> 浏览活动、抢券和查看“我的券”；普通券可从商户详情购买。两种券都在“我的券”完成余额支付。
 
 ## 架构与评测记录
 
