@@ -27,10 +27,10 @@
     </div>
     <div class="content">
       <div class="login-form">
-        <el-input placeholder="请输入手机号" v-model="form.phone">
+        <el-input placeholder="请输入用户名" v-model="form.username" autocomplete="username">
         </el-input>
         <div style="height: 5px"></div>
-        <el-input placeholder="请输入密码" v-model="form.password">
+        <el-input placeholder="请输入密码" v-model="form.password" type="password" autocomplete="current-password">
         </el-input>
         <div style="text-align: center; color: #8c939d;margin: 5px 0"><a href="javascript:void(0)">忘记密码</a></div>
         <el-button @click="login" style="width: 100%; background-color:#f63; color: #fff;">登录</el-button>

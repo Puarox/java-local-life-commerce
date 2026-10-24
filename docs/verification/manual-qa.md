@@ -37,7 +37,7 @@ node frontend/server.js
 
 1. IDEA 选择 **Open**，打开仓库根目录的 `pom.xml`，以 Maven 项目导入；Project SDK 选 JDK 17，Maven Wrapper 选项目自带 wrapper。
 2. 等 Maven 识别 9 个业务/公共模块后，展开 `local-life-service`，确认 `UserController.info` 与 `BlogCommentsController` 路由能被索引；运行根目录 Maven 的 `test` 生命周期。
-3. 服务已启动时不要在 IDEA 再起第二份同端口服务。打开 <http://127.0.0.1:8090/login2.html> 登录演示账号，回到个人页检查头像/昵称/简介为空时的显示，再打开编辑资料页确认资料能读取；本项目当前个人资料页只支持读取展示，尚无资料更新 API。
+3. 服务已启动时不要在 IDEA 再起第二份同端口服务。打开 <http://127.0.0.1:8090/login2.html>，在“用户名”栏输入 `Jack`、密码栏输入 `123` 并勾选用户协议后登录；回到个人页检查头像/昵称/简介为空时的显示，再打开编辑资料页确认资料能读取。本项目当前个人资料页只支持读取展示，尚无资料更新 API。
 4. 打开 <http://127.0.0.1:8090/commerce.html>，搜索商品、加购、创建订单并余额支付；在订单完成后检查支付结果和状态。
 5. 打开笔记详情页，查看评论列表并新增一条评论；再在 Network 面板确认请求通过 `/api` 到 Gateway。评论列表只显示未隐藏评论。
 6. Gateway/Nacos/业务服务运行日志位于 `.local-runtime\service-logs`。若 IDEA 启动某个 Spring 服务失败，先检查对应日志、端口占用、JDK 及 `JWT_KEYSTORE_LOCATION` / `JWT_KEYSTORE_PASSWORD` 环境变量。
