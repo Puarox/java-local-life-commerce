@@ -1,0 +1,24 @@
+{
+  "date": "2026-10-24",
+  "scenario": "balance deduction and payment state roll back when outbox insert violates uk_pay_order",
+  "environment": "isolated local MySQL 8.0.39, Seata 1.5.2, seven Spring services, RabbitMQ 3.13.7",
+  "injectedFailure": "duplicate pay_outbox.pay_order_id; publisher fixture marked confirmed to prevent dispatch",
+  "failureHttpStatus": 500,
+  "afterFailure": {
+    "userBalance": "unchanged",
+    "payOrderStatus": "WAIT_BUYER_PAY (1)",
+    "businessOrderStatus": "WAIT_PAY (1)",
+    "outboxRowsForPayment": 1,
+    "injectedFixturePreserved": true
+  },
+  "recovery": {
+    "retrySucceeded": true,
+    "balanceDeductedExactlyOnce": true,
+    "payOrderStatus": "TRADE_SUCCESS (3)",
+    "outboxRowsForPayment": 1,
+    "rabbitMqUpdatedBusinessOrder": true
+  },
+  "seataXid": "192.168.126.1:8091:9844403962945646",
+  "tcLog": "F:/intern2026/.local-runtime/service-logs/seata.out.log",
+  "tcLogEvidence": "Rollback branch transaction successfully; Rollback global transaction successfully"
+}

@@ -17,6 +17,8 @@
 | 本机读接口压测 | 通过 | 10 并发、100 次预热、3000 次实测；3000 次成功；414.87 请求/秒，P95 38.25 ms，P99 50.98 ms |
 | 秒杀并发正确性 | 通过（限定场景） | 同一账号 20 次并发抢库存 1 的券，1 次成功，剩余库存 0，订单 1 条 |
 | 商户缓存互斥重建 | 通过（单元及本机集成冒烟） | `CacheClientTest` 32 并发请求只触发 1 次 DB 回源，另验证锁等待超时、中断语义、空结果负缓存；`python scripts/test_shop_cache_concurrency.py` 通过，真实本机 Redis/Gateway 的 50 个并发门店请求均成功，缓存已填充且锁键已释放。该冒烟不统计真实 DB 回源数，也不等同多实例 Redis 故障或性能测试 |
+| 支付 Seata 回滚故障注入 | 通过（隔离环境） | `python scripts/test_payment_seata_rollback.py` 使 outbox 唯一键冲突；HTTP 500 后余额、支付单和业务单保持原值；清理夹具重试后扣款一次、outbox 一条、RabbitMQ 最终推进订单。TC 日志记录 XID `192.168.126.1:8091:9844403962945646` 全局回滚，结果见 `verification/results/payment-seata-rollback-20261024.json` |
+| 多用户秒杀库存竞争 | 通过（本机隔离库，两档库存） | 20 个不同用户同步竞争，库存 1 时成功 1 单、库存 0；库存 5 时成功 5 单、库存 0；成功数与订单数相等，未超卖。原始响应见 `verification/results/seckill-multiuser-20261024-*.json`。这是正确性验证，不是 QPS 压测 |
 
 ## 运行复现
 

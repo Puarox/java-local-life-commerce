@@ -62,6 +62,8 @@ python scripts/benchmark_local.py --concurrency 10 --requests 3000 --warmup 100
 | 日期 | 命令/动作 | 结果 |
 |---|---|---|
 | 2026-10-24 | `python scripts/test_shop_cache_concurrency.py` | 清理门店 1 缓存后，通过本机 Gateway/Redis 发起 50 并发请求；50/50 成功，缓存写入，Redisson 锁键释放。仅操作本机门店缓存键 |
+| 2026-10-24 | `python scripts/test_payment_seata_rollback.py` | outbox 唯一键冲突导致 HTTP 500；余额、支付单、业务订单回滚保持原状态。清除夹具后重试成功，扣款一次、outbox 一条、消息推进业务单；TC XID `192.168.126.1:8091:9844403962945646` 全局回滚 |
+| 2026-10-24 | `python scripts/test_seckill_multiuser.py` | 20 个独立账号竞争库存 1：1 单成功、0 剩余、1 订单；设置 `$env:SECKILL_STOCK='5'` 再运行：5 单成功、0 剩余、5 订单。原始响应 JSON 写入 `docs/verification/results`，脚本清理本轮临时账号及券订单数据 |
 | 2026-10-24 | `.\mvnw.cmd -pl local-life-service -am test` | `CacheClientTest` 4 项通过：32 并发请求只触发 1 次 DB 回源、锁等待超时不误解锁、线程中断恢复标记、空值负缓存 |
 | 2026-10-24 | `.\mvnw.cmd -DskipTests install` | 通过；10 个 Maven reactor 项目，随后使用新构建包重启七个 Spring 服务 |
 | 2026-10-24 | `python scripts/check_api_surface.py` | 72 个 HTTP mappings |

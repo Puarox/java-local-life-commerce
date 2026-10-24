@@ -1,0 +1,153 @@
+{
+  "scenario": "different users concurrently compete for limited seckill stock",
+  "voucher_id": 40,
+  "users": 20,
+  "initial_stock": 1,
+  "attempts": 20,
+  "successes": 1,
+  "remaining_stock": 0,
+  "orders": 1,
+  "elapsed_seconds": 0.169,
+  "responses": [
+    {
+      "user_id": 37,
+      "http_status": 200,
+      "success": false,
+      "message": "优惠券库存不足",
+      "latency_ms": 141.37
+    },
+    {
+      "user_id": 33,
+      "http_status": 200,
+      "success": false,
+      "message": "优惠券库存不足",
+      "latency_ms": 142.25
+    },
+    {
+      "user_id": 24,
+      "http_status": 200,
+      "success": true,
+      "message": "",
+      "latency_ms": 144.11
+    },
+    {
+      "user_id": 25,
+      "http_status": 200,
+      "success": false,
+      "message": "优惠券库存不足",
+      "latency_ms": 144.11
+    },
+    {
+      "user_id": 31,
+      "http_status": 200,
+      "success": false,
+      "message": "优惠券库存不足",
+      "latency_ms": 145.2
+    },
+    {
+      "user_id": 23,
+      "http_status": 200,
+      "success": false,
+      "message": "优惠券库存不足",
+      "latency_ms": 146.15
+    },
+    {
+      "user_id": 28,
+      "http_status": 200,
+      "success": false,
+      "message": "优惠券库存不足",
+      "latency_ms": 147.24
+    },
+    {
+      "user_id": 29,
+      "http_status": 200,
+      "success": false,
+      "message": "优惠券库存不足",
+      "latency_ms": 148.04
+    },
+    {
+      "user_id": 26,
+      "http_status": 200,
+      "success": false,
+      "message": "优惠券库存不足",
+      "latency_ms": 150.32
+    },
+    {
+      "user_id": 40,
+      "http_status": 200,
+      "success": false,
+      "message": "优惠券库存不足",
+      "latency_ms": 154.9
+    },
+    {
+      "user_id": 27,
+      "http_status": 200,
+      "success": false,
+      "message": "优惠券库存不足",
+      "latency_ms": 156.24
+    },
+    {
+      "user_id": 35,
+      "http_status": 200,
+      "success": false,
+      "message": "优惠券库存不足",
+      "latency_ms": 158.72
+    },
+    {
+      "user_id": 30,
+      "http_status": 200,
+      "success": false,
+      "message": "优惠券库存不足",
+      "latency_ms": 159.63
+    },
+    {
+      "user_id": 39,
+      "http_status": 200,
+      "success": false,
+      "message": "优惠券库存不足",
+      "latency_ms": 160.46
+    },
+    {
+      "user_id": 36,
+      "http_status": 200,
+      "success": false,
+      "message": "优惠券库存不足",
+      "latency_ms": 161.55
+    },
+    {
+      "user_id": 22,
+      "http_status": 200,
+      "success": false,
+      "message": "优惠券库存不足",
+      "latency_ms": 163.65
+    },
+    {
+      "user_id": 32,
+      "http_status": 200,
+      "success": false,
+      "message": "优惠券库存不足",
+      "latency_ms": 163.13
+    },
+    {
+      "user_id": 38,
+      "http_status": 200,
+      "success": false,
+      "message": "优惠券库存不足",
+      "latency_ms": 164.76
+    },
+    {
+      "user_id": 21,
+      "http_status": 200,
+      "success": false,
+      "message": "优惠券库存不足",
+      "latency_ms": 167.28
+    },
+    {
+      "user_id": 34,
+      "http_status": 200,
+      "success": false,
+      "message": "优惠券库存不足",
+      "latency_ms": 166.55
+    }
+  ]
+}
