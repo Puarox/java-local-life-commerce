@@ -1,6 +1,16 @@
 server:
   port: 8081
 spring:
+  rabbitmq:
+    listener:
+      simple:
+        retry:
+          enabled: true
+          max-attempts: 3
+          initial-interval: 1s
+          multiplier: 2.0
+          max-interval: 5s
+        default-requeue-rejected: false
   application:
     name: local-life-service
   cloud:

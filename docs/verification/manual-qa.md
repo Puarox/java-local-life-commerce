@@ -64,10 +64,12 @@ python scripts/benchmark_local.py --concurrency 10 --requests 3000 --warmup 100
 | 2026-10-24 | `python scripts/test_shop_cache_concurrency.py` | 清理门店 1 缓存后，通过本机 Gateway/Redis 发起 50 并发请求；50/50 成功，缓存写入，Redisson 锁键释放。仅操作本机门店缓存键 |
 | 2026-10-24 | `python scripts/test_payment_seata_rollback.py` | outbox 唯一键冲突导致 HTTP 500；余额、支付单、业务订单回滚保持原状态。清除夹具后重试成功，扣款一次、outbox 一条、消息推进业务单；TC XID `192.168.126.1:8091:9844403962945646` 全局回滚 |
 | 2026-10-24 | `python scripts/test_seckill_multiuser.py` | 20 个独立账号竞争库存 1：1 单成功、0 剩余、1 订单；设置 `$env:SECKILL_STOCK='5'` 再运行：5 单成功、0 剩余、5 订单。原始响应 JSON 写入 `docs/verification/results`，脚本清理本轮临时账号及券订单数据 |
+| 2026-10-24 | `python scripts/test_rabbitmq_dead_letter.py` | 发送不存在业务订单的合法支付消息；3 次消费尝试后进入 `trade.pay.success.dlq`，RabbitMQ `x-death` 标记 `reason=rejected`，消息 ID 保留 |
+| 2026-10-24 | `python scripts/test_rabbitmq_dlq_replay.py` | 对真实 outbox 事件临时注入交易库更新失败，确认消息进入 DLQ；去掉故障后调用单消息重放脚本，订单变为已支付、余额仅扣一次、DLQ 清空 |
 | 2026-10-24 | `.\mvnw.cmd -pl local-life-service -am test` | `CacheClientTest` 4 项通过：32 并发请求只触发 1 次 DB 回源、锁等待超时不误解锁、线程中断恢复标记、空值负缓存 |
 | 2026-10-24 | `.\mvnw.cmd -DskipTests install` | 通过；10 个 Maven reactor 项目，随后使用新构建包重启七个 Spring 服务 |
 | 2026-10-24 | `python scripts/check_api_surface.py` | 72 个 HTTP mappings |
-| 2026-10-24 | `python scripts/test_http_integration.py` | 87 次真实 Gateway HTTP 调用通过；包含支付、重试/对账、取消、核销、退款、重复操作拒绝和余额回退断言 |
+| 2026-10-24 | `python scripts/test_http_integration.py` | 87 次真实 Gateway HTTP 调用通过；最终回归使用新版本支付消费者队列，商城/券支付均经 RabbitMQ 更新业务状态；覆盖支付、取消、核销、退款、重复操作拒绝和余额回退断言 |
 | 2026-10-24 | `python scripts/test_frontend_smoke.py` | 13 页面 HTTP 200，无页面级 JavaScript 错误（需要设置隔离安装目录的 `PYTHONPATH`） |
 | 2026-10-24 | Edge 页面交互检查 | 活动页只展示有效演示券；门店 1 和 21 的探店笔记从真实接口返回；4 个页面无 `pageerror` |
 | 2026-10-24 | `python scripts/test_seata_rollback.py` | 库存不足返回 400；交易订单及明细计数不变、购物车恢复、库存仍为 1；TC 日志有全局回滚 |
@@ -87,6 +89,25 @@ python scripts/benchmark_local.py --concurrency 10 --requests 3000 --warmup 100
 `pay_outbox` 在余额扣款和支付单成功状态的 Seata 全局事务中落库。发布器启用 RabbitMQ publisher confirms 和 mandatory returns；失败按 2、4、8、16、32、60 秒上限退避并记录错误。每分钟扫描已支付、已确认但较早的通知，与业务订单状态核对；缺失事件会补建，业务单仍待支付时会重新发布。消费者对已经更新的订单允许重复通知。
 
 验证记录：将测试 outbox 事件临时改到不存在的 routing key，RabbitMQ 返回 `NO_ROUTE`，发件箱状态恢复待重试且 attempts 增加；修复 routing key 后事件重新确认。随后将一条已支付商城订单状态临时改回待支付，定时对账日志发现差异并补发，订单最终恢复已支付。HTTP 联调还覆盖核销码只在待使用状态返回、重复核销 400、已使用券退款 400、未核销券退款成功且余额增加 100 分、重复退款 400，以及取消支付单后禁止再次支付。
+
+## RabbitMQ 管理、死信检查与重放
+
+当前本机 RabbitMQ 3.13.7 已启用自带 Management 插件：<http://127.0.0.1:15672/>，本地默认账号 `guest` / `guest`。Queues 页面查看 `trade.pay.success.queue.v2`、`trade.pay.success.dlq`、`voucher.pay.success.queue.v2` 和 `voucher.pay.success.dlq`。消费端每条消息最多尝试 3 次（1 秒起步、倍数 2、上限 5 秒），最终拒绝后由 `pay.dlx` 路由至对应 DLQ；可在消息 headers 中查看 `x-death` 原队列、routing key 和拒绝原因。发布确认表示 broker 已接收，不表示消费者处理成功。
+
+```powershell
+python scripts/test_rabbitmq_dead_letter.py
+```
+
+该测试将一条“订单不存在”的合规消息放入交易 DLQ，供 UI 人工查看 `message_id` 与 `x-death`。修复根因并核实业务状态后，可对仅含一条待处理消息的队列执行：
+
+```powershell
+python scripts/replay_rabbitmq_dead_letter.py trade.pay.success.dlq EVENT_ID_FROM_RABBITMQ_UI
+python scripts/replay_rabbitmq_dead_letter.py voucher.pay.success.dlq EVENT_ID_FROM_RABBITMQ_UI
+```
+
+重放脚本只允许本机 Management API，要求 DLQ 恰有一条 ready 消息，校验原始 exchange/routing key 与 `x-death`，保留原 `message_id` 和 outbox event ID；broker 确认重新路由后才确认删除原 DLQ 副本。若发布成功后进程在确认原消息前退出，可能发生重复，因此依赖消费者幂等。存在多条 DLQ 消息时脚本会拒绝执行，先逐条人工核对，不能批量清队列。完整故障注入、恢复与重放可运行 `python scripts/test_rabbitmq_dlq_replay.py`。
+
+验证脚本会在隔离库留下已支付的临时订单用于审计；测试商品会删除。人工操作时把 `EVENT_ID_FROM_RABBITMQ_UI` 替换成消息属性中的 `message_id`，并先确认对应 outbox/业务订单状态以及故障根因已修复。
 
 ## 未验证范围
 

@@ -31,15 +31,26 @@ if (-not (Get-NetTCPConnection -State Listen -LocalPort 8848 -ErrorAction Silent
 
 $env:ERLANG_HOME = Join-Path $runtime 'erlang-26'
 $env:RABBITMQ_BASE = Join-Path $runtime 'rabbitmq-data'
-$rabbit = Join-Path $runtime 'rabbitmq-3.13.7\rabbitmq_server-3.13.7\sbin\rabbitmq-server.bat'
-if (-not (Get-NetTCPConnection -State Listen -LocalPort 5672 -ErrorAction SilentlyContinue)) {
+$rabbitSbin = Join-Path $runtime 'rabbitmq-3.13.7\rabbitmq_server-3.13.7\sbin'
+$rabbit = Join-Path $rabbitSbin 'rabbitmq-server.bat'
+$rabbitPlugins = Join-Path $rabbitSbin 'rabbitmq-plugins.bat'
+$brokerListening = [bool](Get-NetTCPConnection -State Listen -LocalPort 5672 -ErrorAction SilentlyContinue)
+if (-not (Get-NetTCPConnection -State Listen -LocalPort 15672 -ErrorAction SilentlyContinue)) {
+    if ($brokerListening) {
+        & $rabbitPlugins enable rabbitmq_management
+    } else {
+        & $rabbitPlugins enable --offline rabbitmq_management
+    }
+    if ($LASTEXITCODE -ne 0) { throw 'RabbitMQ Management plugin could not be enabled' }
+}
+if (-not $brokerListening) {
     Start-Process -FilePath $env:ComSpec -ArgumentList @('/c', "`"$rabbit`"") `
         -WorkingDirectory (Split-Path $rabbit) -WindowStyle Hidden `
         -RedirectStandardOutput (Join-Path $logs 'rabbitmq.out.log') `
         -RedirectStandardError (Join-Path $logs 'rabbitmq.err.log')
 }
 
-$ports = @($DbPort, 6379, 8848, 5672)
+$ports = @($DbPort, 6379, 8848, 5672, 15672)
 foreach ($port in $ports) {
     $ready = $false
     for ($attempt = 0; $attempt -lt 45; $attempt++) {

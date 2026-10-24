@@ -70,7 +70,11 @@ public class PayOutboxPublisher {
             if (!repository.lease(event.id)) continue;
             try {
                 CorrelationData correlation = new CorrelationData(event.id.toString());
-                rabbit.convertAndSend("pay.direct", event.routingKey, event.bizOrderNo, correlation);
+                rabbit.convertAndSend("pay.direct", event.routingKey, event.bizOrderNo, message -> {
+                    message.getMessageProperties().setMessageId(event.id.toString());
+                    message.getMessageProperties().setHeader("outboxEventId", event.id);
+                    return message;
+                }, correlation);
                 CorrelationData.Confirm confirm = correlation.getFuture().get(5, TimeUnit.SECONDS);
                 if (!confirm.isAck()) throw new IllegalStateException("broker nack: " + confirm.getReason());
                 if (correlation.getReturned() != null) {

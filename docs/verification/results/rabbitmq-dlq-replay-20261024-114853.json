@@ -1,0 +1,24 @@
+{
+  "date": "2026-10-24",
+  "scenario": "real outbox payment event failed in consumer, dead-lettered, then replayed after repair",
+  "businessOrderId": 2113960870839631874,
+  "payOrderId": 2113960871187808259,
+  "outboxEventId": "187",
+  "deadLetterProvenance": {
+    "count": 1,
+    "exchange": "pay.direct",
+    "queue": "trade.pay.success.queue.v2",
+    "reason": "rejected",
+    "routing-keys": [
+      "pay.success"
+    ],
+    "time": 1792842525
+  },
+  "failureInjection": "temporary trade DB trigger",
+  "afterReplay": {
+    "businessOrderStatus": 2,
+    "payOrderStatus": 3,
+    "balanceDeductedExactlyOnce": true,
+    "dlqEmpty": true
+  }
+}

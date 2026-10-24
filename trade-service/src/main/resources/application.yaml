@@ -6,6 +6,16 @@ server:
     accept-count: 50 # 最大排队等待数量
     max-connections: 100 # 允许的最大连接
 spring:
+  rabbitmq:
+    listener:
+      simple:
+        retry:
+          enabled: true
+          max-attempts: 3
+          initial-interval: 1s
+          multiplier: 2.0
+          max-interval: 5s
+        default-requeue-rejected: false
   sentinel:
     transport:
       dashboard: localhost:8090

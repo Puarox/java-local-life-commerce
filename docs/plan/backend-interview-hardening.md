@@ -6,10 +6,10 @@
 
 | 阶段 | 状态 | 当前证据 |
 |---|---|---|
-| 一：Redis 缓存锁 | 实现及本地验证完成 | Redisson `RLock`、有界等待、只由持有者释放；`CacheClientTest` 覆盖并发单次回源、超时、空值缓存和中断；真实 Redis/Gateway 脚本完成 50 并发请求，检查缓存填充及锁释放。 |
+| 一：Redis 缓存锁 | 实现及本地验证完成 | Redisson `RLock`、有界等待、只由持有者释放；`CacheClientTest` 覆盖并发单次回源、超时、空值缓存和中断；真实 Redis/Gateway 脚本完成 50 并发请求，检查缓存填充及锁释放。Redis 故障中断场景未单独注入；锁等待超时后当前采取数据库回源保可用，极慢 DB 下仍可能有并发回源。 |
 | 二：支付 Seata 回滚 | 已实现并通过一次故障注入 | `python scripts/test_payment_seata_rollback.py` 在 outbox 唯一键制造重复插入；HTTP 500 后余额/支付单/业务单不变，清除夹具后重试扣款一次并由 MQ 推进业务单；TC XID `192.168.126.1:8091:9844403962945646` 记录全局回滚。结果见 `docs/verification/results/payment-seata-rollback-20261024.json`。 |
 | 三：多用户秒杀竞争 | 已实现并通过两档库存验证 | `python scripts/test_seckill_multiuser.py` 为 20 个独立测试账号创建登录态，分别竞争库存 1 和 5；两轮成功数与订单数均等于库存，库存归零且无超卖。原始响应见 `docs/verification/results/seckill-multiuser-20261024-*.json`。 |
-| 四：RabbitMQ 死信 | 未开始 | — |
+| 四：RabbitMQ 死信 | 实现、故障验证及单消息重放完成 | 交易/券消费者各有 3 次有界重试和独立 DLQ；真实 outbox 消息在临时 DB 故障下进入 DLQ，修复后用原 `message_id` 重放，订单完成且扣款一次。另验证缺失订单通知被拒绝后记录 `x-death`。见 `docs/verification/results/rabbitmq-dlq*.json`。 |
 
 ## 目标
 
@@ -19,7 +19,7 @@
 - 为消费者异常配置有限重试和死信队列，避免毒消息无限重投或静默丢失。
 - 每项都保存命令、环境、通过条件和 SQL/队列/服务日志等证据，作为面试追问和简历表述依据。
 
-## 当前代码基线与风险
+## 实施前代码基线与风险
 
 | 工作项 | 当前发现 | 风险 |
 |---|---|---|

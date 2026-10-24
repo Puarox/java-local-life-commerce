@@ -1,0 +1,28 @@
+{
+  "date": "2026-10-24",
+  "scenario": "payment event for a nonexistent order exhausts listener retries and routes to DLQ",
+  "sourceQueue": "trade.pay.success.queue.v2",
+  "deadLetterQueue": "trade.pay.success.dlq",
+  "messageId": "dlq-test-f2d402dffe5545408e01facac0240c5d",
+  "payload": "9223372036854775807",
+  "retryPolicy": {
+    "maxAttempts": 3,
+    "initialInterval": "1s",
+    "multiplier": 2.0,
+    "maxInterval": "5s",
+    "requeueRejected": false
+  },
+  "deadLetterProvenance": {
+    "count": 1,
+    "exchange": "pay.direct",
+    "queue": "trade.pay.success.queue.v2",
+    "reason": "rejected",
+    "routing-keys": [
+      "pay.success"
+    ],
+    "time": 1792842699
+  },
+  "messagesReadyBefore": 0,
+  "messagesReadyAfter": 1,
+  "messageLeftInDlqForManualInspection": true
+}

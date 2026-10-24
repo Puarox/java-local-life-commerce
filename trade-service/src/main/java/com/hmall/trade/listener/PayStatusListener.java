@@ -1,9 +1,7 @@
 package com.hmall.trade.listener;
 
 import com.hmall.trade.service.IOrderService;
-import org.springframework.amqp.rabbit.annotation.Exchange;
-import org.springframework.amqp.rabbit.annotation.Queue;
-import org.springframework.amqp.rabbit.annotation.QueueBinding;
+import com.hmall.trade.config.PayQueueTopology;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -16,11 +14,7 @@ public class PayStatusListener {
 
 
 
-    @RabbitListener(bindings = @QueueBinding(
-            value = @Queue(name="trade.pay.success.queue",durable = "true"),
-            exchange = @Exchange(name="pay.direct"),
-            key = "pay.success"
-    ))
+    @RabbitListener(queues = PayQueueTopology.PAY_QUEUE)
     public void listenPaySuccess(Long orderId){
         orderService.markOrderPaySuccess(orderId);
     }
