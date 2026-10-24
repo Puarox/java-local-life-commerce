@@ -17,11 +17,12 @@ import com.hmall.pay.domain.dto.PayOrderFormDTO;
 import com.hmall.pay.domain.po.PayOrder;
 import com.hmall.pay.enums.PayStatus;
 import com.hmall.pay.mapper.PayOrderMapper;
+import com.hmall.pay.outbox.PayOutboxRepository;
 import com.hmall.pay.service.IPayOrderService;
 import feign.FeignException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import io.seata.spring.annotation.GlobalTransactional;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -46,7 +47,7 @@ public class PayOrderServiceImpl extends ServiceImpl<PayOrderMapper, PayOrder> i
 
     private final VoucherOrderClient voucherOrderClient;
 
-    private final RabbitTemplate rabbitTemplate;
+    private final PayOutboxRepository outbox;
     private static final String COMMERCE_SOURCE = "{\"source\":\"commerce\"}";
     private static final String VOUCHER_SOURCE = "{\"source\":\"voucher\"}";
     @Override
@@ -82,7 +83,7 @@ public class PayOrderServiceImpl extends ServiceImpl<PayOrderMapper, PayOrder> i
         }
         if (voucherOrder.getStatus() == null || voucherOrder.getStatus() != 1
                 || voucherOrder.getTotalFee() == null || voucherOrder.getTotalFee() < 1) {
-            throw new BizIllegalException("券订单状态或金额不允许支付");
+            throw new BadRequestException("券订单状态或金额不允许支付");
         }
         PayApplyDTO applyDTO = PayApplyDTO.builder()
                 .bizOrderNo(voucherOrderId)
@@ -95,6 +96,32 @@ public class PayOrderServiceImpl extends ServiceImpl<PayOrderMapper, PayOrder> i
     }
 
     @Override
+    @GlobalTransactional
+    @Transactional
+    public void refundVoucherPayOrder(Long voucherOrderId) {
+        Long userId = UserContext.getUser();
+        PayOrder order = queryByBizOrderNo(voucherOrderId);
+        if (order == null || userId == null || !userId.equals(order.getBizUserId())
+                || !VOUCHER_SOURCE.equals(order.getExpandJson())) {
+            throw new ForbiddenException("券支付单不存在或无权退款");
+        }
+        if (!PayStatus.TRADE_SUCCESS.equalsValue(order.getStatus())) {
+            throw new BadRequestException("当前支付状态不能退款");
+        }
+        OrderSummaryDTO voucher = voucherOrderClient.getPaymentSummary(voucherOrderId);
+        if (voucher == null || voucher.getStatus() == null || voucher.getStatus() != 2) {
+            throw new BadRequestException("券未支付或已使用，不能退款");
+        }
+        boolean locked = lambdaUpdate().set(PayOrder::getStatus, PayStatus.TRADE_REFUNDED.getValue())
+                .eq(PayOrder::getId, order.getId())
+                .eq(PayOrder::getStatus, PayStatus.TRADE_SUCCESS.getValue()).update();
+        if (!locked) throw new BadRequestException("退款正在处理，请刷新后重试");
+        userClient.creditMoney(order.getAmount());
+        voucherOrderClient.markRefunded(voucherOrderId);
+    }
+
+    @Override
+    @GlobalTransactional
     @Transactional
     public void tryPayOrderByBalance(PayOrderFormDTO payOrderFormDTO) {
         // 1.查询支付单
@@ -123,19 +150,9 @@ public class PayOrderServiceImpl extends ServiceImpl<PayOrderMapper, PayOrder> i
             throw new BizIllegalException("交易已支付或关闭！");
         }
 
-        try {
-            String routingKey = VOUCHER_SOURCE.equals(po.getExpandJson())
-                    ? "voucher.pay.success" : "pay.success";
-            rabbitTemplate.convertAndSend("pay.direct", routingKey, po.getBizOrderNo());
-        }catch (Exception e){
-           log.error("发送支付状态失败");
-        }
-       // tradeClient.markOrderPaySuccess(po.getBizOrderNo());
-//        Order order = new Order();
-//        order.setId(po.getBizOrderNo());
-//        order.setStatus(2);
-//        order.setPayTime(LocalDateTime.now());
-//        orderService.updateById(order);
+        String routingKey = VOUCHER_SOURCE.equals(po.getExpandJson())
+                ? "voucher.pay.success" : "pay.success";
+        outbox.record(po.getId(), po.getBizOrderNo(), routingKey);
     }
 
     public boolean markPayOrderSuccess(Long id, LocalDateTime successTime) {

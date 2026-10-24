@@ -6,6 +6,9 @@ server:
     accept-count: 50 # 最大排队等待数量
     max-connections: 100 # 允许的最大连接
 spring:
+  rabbitmq:
+    publisher-confirm-type: correlated
+    publisher-returns: true
   cloud:
     sentinel:
       transport:
@@ -17,7 +20,7 @@ feign:
   main:
     allow-circular-references: true
   sentinel:
-    enabled: true
+    enabled: false
 hm:
   jwt:
     location: "${JWT_KEYSTORE_LOCATION:file:./dev-secrets/hmall.jks}"

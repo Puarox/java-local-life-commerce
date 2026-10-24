@@ -20,5 +20,7 @@ public interface IPayOrderService extends IService<PayOrder> {
 
     String applyVoucherPayOrder(Long voucherOrderId);
 
+    void refundVoucherPayOrder(Long voucherOrderId);
+
     void tryPayOrderByBalance(PayOrderFormDTO payOrderFormDTO);
 }

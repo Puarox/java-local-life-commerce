@@ -19,4 +19,7 @@ public interface UserClient {
 
     @PutMapping("/users/money/deduct")
     void deductMoney(@RequestParam("pw") String pw, @RequestParam("amount") Integer amount);
+
+    @PutMapping("/internal/users/money/credit")
+    void creditMoney(@RequestParam("amount") Integer amount);
 }
