@@ -61,6 +61,9 @@ python scripts/benchmark_local.py --concurrency 10 --requests 3000 --warmup 100
 
 | 日期 | 命令/动作 | 结果 |
 |---|---|---|
+| 2026-10-24 | `python scripts/test_shop_cache_concurrency.py` | 清理门店 1 缓存后，通过本机 Gateway/Redis 发起 50 并发请求；50/50 成功，缓存写入，Redisson 锁键释放。仅操作本机门店缓存键 |
+| 2026-10-24 | `.\mvnw.cmd -pl local-life-service -am test` | `CacheClientTest` 4 项通过：32 并发请求只触发 1 次 DB 回源、锁等待超时不误解锁、线程中断恢复标记、空值负缓存 |
+| 2026-10-24 | `.\mvnw.cmd -DskipTests install` | 通过；10 个 Maven reactor 项目，随后使用新构建包重启七个 Spring 服务 |
 | 2026-10-24 | `python scripts/check_api_surface.py` | 72 个 HTTP mappings |
 | 2026-10-24 | `python scripts/test_http_integration.py` | 87 次真实 Gateway HTTP 调用通过；包含支付、重试/对账、取消、核销、退款、重复操作拒绝和余额回退断言 |
 | 2026-10-24 | `python scripts/test_frontend_smoke.py` | 13 页面 HTTP 200，无页面级 JavaScript 错误（需要设置隔离安装目录的 `PYTHONPATH`） |
